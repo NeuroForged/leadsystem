@@ -60,7 +60,6 @@ Traffic Sourece: \{lead.getTrafficSource()}
 ClientId: \{lead.getClientId()}
 Created at:\{lead.getCreatedAt()}""");
         try {
-            emailService.sendLeadNotification("joshua.white@neuroforged.com", subject, body);
             emailService.sendLeadNotification("matthew.mcfarlane@neuroforged.com", subject, body);
         } catch (MessagingException e) {
             e.printStackTrace(); // You might log this properly
