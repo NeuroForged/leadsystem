@@ -43,21 +43,22 @@ public class LeadServiceImpl implements LeadService{
 
         Lead saved = leadRepository.save(lead);
         String subject = "New Lead Received";
-        String body = ("Name: " + lead.getFirstName() +
-                "\nEmail: " + lead.getEmail() +
-                "\nCustomer Type: " + lead.getCustomerType() +
-                "\nBusiness Name" + lead.getBusinessName() +
-                "\nBusiness Type: " + lead.getLeadChallenge() +
-                "\nMonthly Leads: " + lead.getMonthlyLeads() +
-                "\nTraffic Sourece: " + lead.getTrafficSource() +
-                "\nMonthly Leads: " + lead.getMonthlyLeads() +
-                "\nConversion Rate: " + lead.getConversionRate() +
-                "\nCost Per Lead" + lead.getCostPerLead() +
-                "\nClient Value: " + lead.getClientValue() +
-                "\nLead Challenge: " + lead.getLeadChallenge() +
-                "\nTraffic Sourece: " + lead.getTrafficSource() +
-                "\nClientId: " + lead.getClientId() +
-                "\nCreated at:" + lead.getCreatedAt());
+        String body = (STR."""
+Name: \{lead.getFirstName()}
+Email: \{lead.getEmail()}
+Customer Type: \{lead.getCustomerType()}
+Business Name\{lead.getBusinessName()}
+Business Type: \{lead.getLeadChallenge()}
+Monthly Leads: \{lead.getMonthlyLeads()}
+Traffic Sourece: \{lead.getTrafficSource()}
+Monthly Leads: \{lead.getMonthlyLeads()}
+Conversion Rate: \{lead.getConversionRate()}
+Cost Per Lead\{lead.getCostPerLead()}
+Client Value: \{lead.getClientValue()}
+Lead Challenge: \{lead.getLeadChallenge()}
+Traffic Sourece: \{lead.getTrafficSource()}
+ClientId: \{lead.getClientId()}
+Created at:\{lead.getCreatedAt()}""");
         try {
             emailService.sendLeadNotification("joshua.white@neuroforged.com", subject, body);
         } catch (MessagingException e) {
