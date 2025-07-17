@@ -5,8 +5,9 @@ WORKDIR /app
 
 # Copy pom files first to leverage Docker layer caching
 
-RUN chmod +x ./mvnw
+
 COPY pom.xml mvnw ./
+RUN chmod +x ./mvnw
 COPY .mvn .mvn
 RUN ./mvnw dependency:go-offline
 
