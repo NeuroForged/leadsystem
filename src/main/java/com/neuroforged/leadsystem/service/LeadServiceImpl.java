@@ -47,13 +47,13 @@ public class LeadServiceImpl implements LeadService{
                 "\nEmail: " + lead.getEmail() +
                 "\nCustomer Type: " + lead.getCustomerType() +
                 "\nBusiness Name" + lead.getBusinessName() +
-                "\mBusiness Type: " + lead.getLeadChallenge() +
+                "\nBusiness Type: " + lead.getLeadChallenge() +
                 "\nMonthly Leads: " + lead.getMonthlyLeads() +
                 "\nTraffic Sourece: " + lead.getTrafficSource() +
                 "\nMonthly Leads: " + lead.getMonthlyLeads() +
                 "\nConversion Rate: " + lead.getConversionRate() +
                 "\nCost Per Lead" + lead.getCostPerLead() +
-                "\mClient Value: " + lead.getClientValue() +
+                "\nClient Value: " + lead.getClientValue() +
                 "\nLead Challenge: " + lead.getLeadChallenge() +
                 "\nTraffic Sourece: " + lead.getTrafficSource() +
                 "\nClientId: " + lead.getClientId() +
