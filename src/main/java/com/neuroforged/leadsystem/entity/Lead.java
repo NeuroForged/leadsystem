@@ -26,10 +26,8 @@ public class Lead {
 
     private String firstName;
 
-    @Column(unique = true)
+//    @Column(unique = true)
     private String email;
-    @Column(unique = true)
-    private String phoneNumber;
 
     private String businessName;
     private String businessType;

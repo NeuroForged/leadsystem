@@ -27,7 +27,6 @@ public class LeadServiceImpl implements LeadService{
         Lead lead = Lead.builder()
                 .firstName(dto.getFirstName())
                 .email(dto.getEmail())
-                .phoneNumber(dto.getPhoneNumber())
                 .businessName(dto.getBusinessName())
                 .businessType(dto.getBusinessType())
                 .customerType(dto.getCustomerType())
@@ -76,7 +75,6 @@ public class LeadServiceImpl implements LeadService{
         dto.setId(lead.getId());
         dto.setFirstName(lead.getFirstName());
         dto.setEmail(lead.getEmail());
-        dto.setPhoneNumber(lead.getPhoneNumber());
         dto.setBusinessName(lead.getBusinessName());
         dto.setBusinessType(lead.getBusinessType());
         dto.setTrafficSource(lead.getTrafficSource());

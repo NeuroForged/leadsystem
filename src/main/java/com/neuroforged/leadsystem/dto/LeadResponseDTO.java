@@ -11,7 +11,6 @@ public class LeadResponseDTO {
     private Long id;
     private String firstName;
     private String email;
-    private String phoneNumber;
     private String businessName;
     private String businessType;
     private String customerType;

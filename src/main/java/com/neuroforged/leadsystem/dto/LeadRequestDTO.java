@@ -9,7 +9,6 @@ public class LeadRequestDTO {
 
     private String firstName;
     private String email;
-    private String phoneNumber;
     private String businessName;
     private String businessType;
     private String customerType;
