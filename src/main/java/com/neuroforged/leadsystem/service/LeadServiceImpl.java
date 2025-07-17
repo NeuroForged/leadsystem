@@ -42,23 +42,23 @@ public class LeadServiceImpl implements LeadService{
                 .build();
 
         Lead saved = leadRepository.save(lead);
-        String subject = "New Lead Received";
+        String subject = "New Lead Received - " + lead.getEmail() + " - " + lead.getLeadScore() + "/100";
         String body = (STR."""
 Name: \{lead.getFirstName()}
 Email: \{lead.getEmail()}
 Customer Type: \{lead.getCustomerType()}
-Business Name\{lead.getBusinessName()}
+Business Name: \{lead.getBusinessName()}
 Business Type: \{lead.getLeadChallenge()}
 Monthly Leads: \{lead.getMonthlyLeads()}
 Traffic Sourece: \{lead.getTrafficSource()}
 Monthly Leads: \{lead.getMonthlyLeads()}
 Conversion Rate: \{lead.getConversionRate()}
-Cost Per Lead\{lead.getCostPerLead()}
+Cost Per Lead: \{lead.getCostPerLead()}
 Client Value: \{lead.getClientValue()}
 Lead Challenge: \{lead.getLeadChallenge()}
 Traffic Sourece: \{lead.getTrafficSource()}
 ClientId: \{lead.getClientId()}
-Created at:\{lead.getCreatedAt()}""");
+Created at: \{lead.getCreatedAt()}""");
         try {
             emailService.sendLeadNotification("joshua.white@neuroforged.com", subject, body);
             emailService.sendLeadNotification("matthew.mcfarlane@neuroforged.com", subject, body);
