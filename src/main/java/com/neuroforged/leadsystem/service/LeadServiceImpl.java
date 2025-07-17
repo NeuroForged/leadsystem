@@ -43,8 +43,21 @@ public class LeadServiceImpl implements LeadService{
 
         Lead saved = leadRepository.save(lead);
         String subject = "New Lead Received";
-        String body = "Name: " + lead.getFirstName() + "\nEmail: " + lead.getEmail();
-
+        String body = "Name: " + lead.getFirstName() +
+                "\nEmail: " + lead.getEmail() +
+                "\nCustomer Type: " + lead.getCustomerType() +
+                "\nBusiness Name" + lead.getBusinessName() +
+                "\mBusiness Type: " + lead.getLeadChallenge() +
+                "\nMonthly Leads: " + lead.getMonthlyLeads() +
+                "\nTraffic Sourece: " + lead.getTrafficSource() +
+                "\nMonthly Leads: " + lead.getMonthlyLeads() +
+                "\nConversion Rate: " + lead.getConversionRate() +
+                "\nCost Per Lead" + lead.getCostPerLead() +
+                "\mClient Value: " + lead.getClientValue() +
+                "\nLead Challenge: " + lead.getLeadChallenge() +
+                "\nTraffic Sourece: " + lead.getTrafficSource() +
+                "\nClientId: " + lead.getClientId() +
+                "\nCreated at:" + lead.getCreatedAt();
         try {
             emailService.sendLeadNotification("joshua.white@neuroforged.com", subject, body);
         } catch (MessagingException e) {
