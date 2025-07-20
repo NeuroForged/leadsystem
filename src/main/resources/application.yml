@@ -1,0 +1,6 @@
+spring:
+  profiles:
+    active: local
+  jackson:
+    serialization:
+      INDENT_OUTPUT: true

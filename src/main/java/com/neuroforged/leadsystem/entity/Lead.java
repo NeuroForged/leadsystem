@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Table(
@@ -35,12 +36,10 @@ public class Lead {
     private String trafficSource;
 
     private Integer monthlyLeads;
-    private Double conversionRate;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal  costPerLead;
-    @Column(precision = 10, scale = 2)
-    private BigDecimal clientValue;
+    private Double conversionRate;
+    private Double  costPerLead;
+    private Double clientValue;
 
     private Integer leadScore;
 

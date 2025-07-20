@@ -17,8 +17,8 @@ public class LeadResponseDTO {
     private String trafficSource;
     private Integer monthlyLeads;
     private Double conversionRate;
-    private BigDecimal costPerLead;
-    private BigDecimal clientValue;
+    private Double costPerLead;
+    private Double clientValue;
     private Integer leadScore;
     private String leadChallenge;
     private String clientId;

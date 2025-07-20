@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import com.neuroforged.leadsystem.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,6 +15,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -27,6 +29,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request) {
         try {
+            log.info("🔐 Attempting login for email: {}", request.getEmail());
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
@@ -34,14 +38,18 @@ public class AuthController {
                     )
             );
 
+            log.info("✅ Authentication successful for: {}", request.getEmail());
+
             User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
             String token = jwtUtil.generateToken(user);
 
             return ResponseEntity.ok(new AuthenticationResponse(token));
         } catch (AuthenticationException e) {
+            log.warn("❌ Authentication failed for {}: {}", request.getEmail(), e.getMessage());
             return ResponseEntity.status(401).body("Invalid email or password");
         }
     }
+
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthenticationRequest request) {

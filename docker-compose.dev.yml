@@ -1,32 +1,38 @@
-env:
 services:
   db:
     image: postgres:15
-    restart: always
     container_name: neuroforged-db
+    restart: always
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_DB: neuroforged
-      POSTGRES_USER: devuser
-      POSTGRES_PASSWORD: devpass
+    env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - neuroforged
+    labels:
+      environment: dev
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: neuroforged-pgadmin
     restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@neuroforged.com
-      PGADMIN_DEFAULT_PASSWORD: neuroadmin
+    env_file: .env
     ports:
       - "5050:80"
     depends_on:
       - db
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+    networks:
+      - neuroforged
+    labels:
+      environment: dev
 
 volumes:
   postgres_data:
   pgadmin_data:
+
+networks:
+  neuroforged:

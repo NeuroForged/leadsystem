@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Local Dev Postgres",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "Username": "neurodevuser",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "neuroforged"
+    }
+  }
+}
