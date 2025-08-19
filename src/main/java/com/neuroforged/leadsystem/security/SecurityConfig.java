@@ -31,6 +31,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/leads/**").authenticated()
+                        .requestMatchers("/api/clients/**").authenticated()
+                        .requestMatchers("/api/calendly/authorize").authenticated()
+                        .requestMatchers("/api/calendly/webhook").permitAll()
+                        .requestMatchers("/api/calendly/oauth/callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(apiTokenFilter, UsernamePasswordAuthenticationFilter.class)

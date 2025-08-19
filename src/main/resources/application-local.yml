@@ -25,6 +25,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+calendly:
+  client_id: ${CALENDLY_CLIENT_ID}
+  redirect-uri: ${CALENDLY_REDIRECT_URI}
+  client-secret: ${CALENDLY_CLIENT_SECRET}
+  webhook-signing-key: ${CALENDLY_WEBHOOK_SIGNING_KEY}
+  scope: organization.read scheduled_events.read scheduled_events.read_all
 
 neuroforged:
   admin:

@@ -53,7 +53,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthenticationRequest request) {
+        log.info("Attempting to Register new user: {}", request.getEmail());
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.info("User already exists");
             return ResponseEntity.badRequest().body("User already exists");
         }
 
@@ -64,6 +66,7 @@ public class AuthController {
                 .build();
 
         userRepository.save(user);
+        log.info("User registered successfully");
         return ResponseEntity.ok("User registered successfully");
     }
 }

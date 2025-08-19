@@ -1,4 +1,4 @@
-package com.neuroforged.leadsystem.service;
+package com.neuroforged.leadsystem.service.impl;
 
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
@@ -7,7 +7,8 @@ import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.EmailSendException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.repository.LeadRepository;
-import jakarta.mail.MessagingException;
+import com.neuroforged.leadsystem.service.EmailService;
+import com.neuroforged.leadsystem.service.LeadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

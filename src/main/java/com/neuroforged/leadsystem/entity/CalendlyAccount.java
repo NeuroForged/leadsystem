@@ -3,22 +3,23 @@ package com.neuroforged.leadsystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
-public class User {
+public class CalendlyAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String email;
+    private String accessToken;
+    private String refreshToken;
+    private String owner;
+    private String ownerType;
+    private String organization;
 
-    private String password;
-
-    private String role;
+    @Column(unique = true)
+    private Long clientId;
 }
