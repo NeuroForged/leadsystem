@@ -4,7 +4,6 @@ spring:
   jackson:
     serialization:
       INDENT_OUTPUT: true
-
 calendly:
   poll:
     fixedDelayMs: 90000
