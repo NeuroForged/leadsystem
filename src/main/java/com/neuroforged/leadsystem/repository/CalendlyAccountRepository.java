@@ -5,6 +5,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface CalendlyAccountRepository extends JpaRepository<CalendlyAccount, Long> {
+import java.util.List;
+
+public interface CalendlyAccountRe
+        List<CalendlyAccount> findByPollEnabledTrue();
+pository extends JpaRepository<CalendlyAccount, Long> {
     Optional<CalendlyAccount> findByClientId(Long clientId);
 }
