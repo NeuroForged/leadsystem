@@ -1,4 +1,5 @@
 package com.neuroforged.leadsystem.entity;
+import com.neuroforged.leadsystem.calendly.CalendlyEventSource;
 
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -13,10 +14,13 @@ public class CalendlyWebhookLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(length = 10000)
+   @Lob
+
+
     private String payload;
 
-    @Column(length = 5000)
+    @Lob
+
     private String headers;
 
 
@@ -25,6 +29,9 @@ public class CalendlyWebhookLog {
     private int retryCount;
     private ZonedDateTime receivedAt;
 
-    @Column(length = 2000)
-    private String errorDetails;
+        @Enumerated(EnumType.STRING)
+    private CalendlyEventSource source;
+
+@Lob
+            private String errorDetails;
 }
