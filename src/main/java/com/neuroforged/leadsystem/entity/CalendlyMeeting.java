@@ -7,7 +7,10 @@ import java.time.ZonedDateTime;
 
 @Entity
 @Data
+@Table(indexes = { @Index(name = "ux_calendlymeeting_uri_start", columnList = "calendlyUri,startTime", unique = true) })
 public class CalendlyMeeting {
+
+   
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
