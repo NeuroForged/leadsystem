@@ -68,5 +68,24 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
         log.info("Response body from Calendly: {}", response.getBody());
         log.info("Response headers from Calendly: {}", response.getHeaders());
         return response.getBody();
+ 
+        @Override
+    public java.util.List<com.neuroforged.leadsystem.dto.ScheduledEventDTO> listScheduledEvents(
+            com.neuroforged.leadsystem.entity.CalendlyAccount account,
+            java.time.Instant minStartTime,
+            java.time.Instant maxStartTime
+    ) {
+        // TODO: implement Calendly scheduled events API call for polling
+        return java.util.Collections.emptyList();
     }
+
+    @Override
+    public java.util.List<com.neuroforged.leadsystem.dto.InviteeDTO> listInvitees(
+            com.neuroforged.leadsystem.entity.CalendlyAccount account,
+            String scheduledEventUuid
+    ) {
+        // TODO: implement Calendly invitees API call for polling
+        return java.util.Collections.emptyList();
+    }
+}
 }
