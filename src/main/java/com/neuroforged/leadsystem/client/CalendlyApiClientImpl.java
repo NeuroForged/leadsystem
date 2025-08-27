@@ -10,6 +10,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Collections;
+import java.util.List;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -33,7 +36,6 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
     @Override
     public String exchangeAuthCodeForTokens(String state) {
         log.info("CalendlyApiClient.exchangeAuthCodeForTokens");
-        // Generate authorization URL to redirect user to Calendly
         log.info("Auth Url: AUTH_URL + \"?response_type=code\"\n" +
                 "                + \"&client_id=\" + clientId\n" +
                 "                + \"&redirect_uri=\" + redirectUri\n" +
@@ -68,24 +70,24 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
         log.info("Response body from Calendly: {}", response.getBody());
         log.info("Response headers from Calendly: {}", response.getHeaders());
         return response.getBody();
- 
-        @Override
-    public java.util.List<com.neuroforged.leadsystem.dto.ScheduledEventDTO> listScheduledEvents(
-            com.neuroforged.leadsystem.entity.CalendlyAccount account,
-            java.time.Instant minStartTime,
-            java.time.Instant maxStartTime
-    ) {
-        // TODO: implement Calendly scheduled events API call for polling
-        return java.util.Collections.emptyList();
     }
 
     @Override
-    public java.util.List<com.neuroforged.leadsystem.dto.InviteeDTO> listInvitees(
+    public List<com.neuroforged.leadsystem.dto.ScheduledEventDTO> listScheduledEvents(
+            com.neuroforged.leadsystem.entity.CalendlyAccount account,
+            Instant minStartTime,
+            Instant maxStartTime
+    ) {
+        // TODO: implement Calendly scheduled events API call for polling
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<com.neuroforged.leadsystem.dto.InviteeDTO> listInvitees(
             com.neuroforged.leadsystem.entity.CalendlyAccount account,
             String scheduledEventUuid
     ) {
         // TODO: implement Calendly invitees API call for polling
-        return java.util.Collections.emptyList();
+        return Collections.emptyList();
     }
-}
 }
