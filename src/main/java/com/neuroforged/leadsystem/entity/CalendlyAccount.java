@@ -1,4 +1,5 @@
 package com.neuroforged.leadsystem.entity;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,6 +21,13 @@ public class CalendlyAccount {
     private String ownerType;
     private String organization;
 
-    @Column(unique = true)
+        private Instant lastPolledAt;
+
+    @Column(nullable = false)
+    private boolean pollEnabled = true;
+
+    @Column(nullable = false)
+    private int pollIntervalSeconds = 180;
+@Column(unique = true)
     private Long clientId;
 }
