@@ -18,10 +18,11 @@ public interface CalendlyApiClient {
     /**
      * Exchanges the authorization code for an access + refresh token.
      */
-  
-      CalendlyTokenResponse exchangeCodeForToken(String code);
+
+    CalendlyTokenResponse exchangeCodeForToken(String code);
 
     List<ScheduledEventDTO> listScheduledEvents(CalendlyAccount account, Instant minStartTime, Instant maxStartTime);
 
     List<InviteeDTO> listInvitees(CalendlyAccount account, String scheduledEventUuid);
 
+}
