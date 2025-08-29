@@ -24,7 +24,9 @@ public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
     private final EmailService emailService;
-
+    private final ClientQuestionRepository clientQuestionRepository;
+    private final ClientAnswerRepository clientAnswerRepository;
+    
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
 
@@ -94,33 +96,48 @@ public class LeadServiceImpl implements LeadService {
     }
 
     private void sendNotificationEmails(Lead lead) {
-        String subject = "New Lead Received - " + lead.getEmail() + " - " + lead.getLeadScore() + "/100";
-        String body = STR."""
-            Email: \{lead.getEmail()}
-            Customer Type: \{lead.getCustomerType()}
-            Business Name: \{lead.getBusinessName()}
-            Business Type: \{lead.getBusinessType()}
-            Monthly Leads: \{lead.getMonthlyLeads()}
-            Traffic Source: \{lead.getTrafficSource()}
-            Conversion Rate: \{lead.getConversionRate()}
-            Cost Per Lead: \{lead.getCostPerLead()}
-            Client Value: \{lead.getClientValue()}
-            Lead Challenge: \{lead.getLeadChallenge()}
-            Client ID: \{lead.getClientId()}
-            Created At: \{lead.getCreatedAt()}
-            """;
+    Long clientId = lead.getClientId();
 
-        String[] team = {
-                "joshua.white@neuroforged.com",
-                "matthew.mcfarlane@neuroforged.com"
-        };
+    // 1) Header (non-question metadata)
+    StringBuilder sb = new StringBuilder();
+    sb.append("Email: ").append(lead.getEmail()).append('\n');
+    sb.append("Lead Score: ").append(lead.getLeadScore()).append("/100").append('\n');
+    sb.append("Created At: ").append(String.valueOf(lead.getCreatedAt())).append('\n');
 
-        try {
-            emailService.sendLeadToMultiple(team, subject, body);
-        } catch (EmailSendException e) {
-            log.warn("Failed to send notification email: {}", e.getMessage(), e);
-        }
+    // 2) Client-specific questions/answers (ordered)
+    List<ClientQuestion> questions =
+            clientQuestionRepository.findByClientIdAndActiveTrueOrderByPositionAsc(clientId);
+
+    for (ClientQuestion q : questions) {
+        // Try to read the saved answer for this question_key
+        String value = clientAnswerRepository
+                .findByClientIdAndQuestionKey(clientId, q.getQuestionKey())
+                .map(ClientAnswer::getValue)
+                .orElse("<no answer>");
+
+        // Use the human-readable text if present; otherwise fall back to the key
+        String label = (q.getQuestionText() != null && !q.getQuestionText().isBlank())
+                ? q.getQuestionText()
+                : q.getQuestionKey();
+
+        sb.append(label).append(": ").append(value).append('\n');
     }
+
+    String subject = "New Lead Received - " + lead.getEmail() + " - " + lead.getLeadScore() + "/100";
+    String body = sb.toString();
+
+    String[] team = {
+            "joshua.white@neuroforged.com",
+            "matthew.mcfarlane@neuroforged.com"
+    };
+
+    try {
+        emailService.sendLeadToMultiple(team, subject, body);
+    } catch (EmailSendException e) {
+        log.warn("Failed to send notification email: {}", e.getMessage(), e);
+    }
+}
+
 
     private LeadResponseDTO mapToDTO(Lead lead) {
         LeadResponseDTO dto = new LeadResponseDTO();
