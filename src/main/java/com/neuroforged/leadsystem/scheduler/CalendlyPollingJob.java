@@ -65,9 +65,9 @@ public class CalendlyPollingJob {
                     }
                     meeting.setEventType(eventDto.getEventTypeName());
                     // set clientId from account
-                    meeting.setClientId(account.getClientId());
+                    
                     calendlyMeetingRepository.save(meeting);
-                    upserts++;
+upserts++;
                 }
 
                 account.setLastPolledAt(now);
