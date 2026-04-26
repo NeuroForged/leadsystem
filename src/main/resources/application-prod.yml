@@ -36,6 +36,8 @@ neuroforged:
   admin:
     email: ${NEUROFORGED_ADMIN_EMAIL}
     password: ${NEUROFORGED_ADMIN_PASSWORD}
+  jwt:
+    secret: ${NEUROFORGED_JWT_SECRET}
   mail:
     from: ${NEUROFORGED_MAIL_FROM}
   tokens:
