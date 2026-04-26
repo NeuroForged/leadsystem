@@ -38,6 +38,8 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cors:
+    allowed-origins: "http://localhost:3000,http://localhost:5173"
   mail:
     from: ${SPRING_MAIL_FROM}
   tokens:

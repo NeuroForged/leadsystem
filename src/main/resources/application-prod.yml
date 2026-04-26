@@ -38,6 +38,8 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cors:
+    allowed-origins: ${NEUROFORGED_CORS_ALLOWED_ORIGINS}
   mail:
     from: ${NEUROFORGED_MAIL_FROM}
   tokens:
