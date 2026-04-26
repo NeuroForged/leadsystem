@@ -27,17 +27,25 @@ public class StartupConfig {
     @Bean
     public CommandLineRunner seedAdminUser() {
         return args -> {
-            if (userRepository.findByEmail(adminEmail).isEmpty()) {
+            var existing = userRepository.findByEmail(adminEmail);
+            if (existing.isEmpty()) {
                 User admin = User.builder()
                         .email(adminEmail)
-                        .password(adminPassword)
+                        .password(passwordEncoder.encode(adminPassword))
                         .role("ADMIN")
                         .build();
 
                 userRepository.save(admin);
                 log.info("✅ Admin user created: {}", adminEmail);
             } else {
-                log.info("ℹ️ Admin user already exists: {}", adminEmail);
+                User admin = existing.get();
+                if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
+                    admin.setPassword(passwordEncoder.encode(adminPassword));
+                    userRepository.save(admin);
+                    log.warn("⚠️ Admin password was not BCrypt-encoded — re-seeded with correct hash");
+                } else {
+                    log.info("ℹ️ Admin user already exists: {}", adminEmail);
+                }
             }
         };
     }
