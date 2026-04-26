@@ -1,0 +1,136 @@
+### NeuroForged Lead System — REST API
+### Use with VS Code REST Client extension or IntelliJ HTTP client
+### Copy .env.example → .env and set @baseUrl and tokens below
+
+@baseUrl = http://localhost:8080
+@adminEmail = admin@yourdomain.com
+@adminPassword = your-admin-password
+@apiKey = your-internal-token
+@jwt = paste-jwt-here-after-login
+@clientId = 1
+
+
+### ============================================================
+### AUTH
+### ============================================================
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+###
+# After login, copy the token from the response and set @jwt above
+
+
+### ============================================================
+### CLIENTS
+### ============================================================
+
+# @name listClients
+GET {{baseUrl}}/api/clients
+Authorization: Bearer {{jwt}}
+
+###
+
+# @name createClient
+POST {{baseUrl}}/api/clients
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "name": "Acme Agency",
+  "primaryEmail": "contact@acmeagency.com"
+}
+
+
+### ============================================================
+### LEADS
+### ============================================================
+
+# @name submitLead (chatbot flow — API key auth)
+POST {{baseUrl}}/api/leads
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "email": "prospect@example.com",
+  "firstName": "Jane",
+  "businessName": "Prospect Co",
+  "businessType": "E-commerce",
+  "customerType": "B2B",
+  "trafficSource": "Google Ads",
+  "monthlyLeads": 120,
+  "conversionRate": 3.5,
+  "costPerLead": 45.00,
+  "clientValue": 5000.00,
+  "leadScore": 82,
+  "leadChallenge": "Struggling to convert paid traffic into booked calls",
+  "clientId": "{{clientId}}"
+}
+
+###
+
+# @name listLeads
+GET {{baseUrl}}/api/leads
+Authorization: Bearer {{jwt}}
+
+###
+
+# @name getLeadById
+GET {{baseUrl}}/api/leads/1
+Authorization: Bearer {{jwt}}
+
+
+### ============================================================
+### CALENDLY OAUTH
+### ============================================================
+
+# @name startCalendlyOAuth
+# Opens the Calendly authorization URL — open this in a browser
+GET {{baseUrl}}/api/calendly/authorize?clientId={{clientId}}
+Authorization: Bearer {{jwt}}
+
+###
+# After authorizing in the browser, Calendly redirects to:
+# GET /api/calendly/oauth/callback?code=...&state=...
+# The server handles this automatically.
+
+
+### ============================================================
+### CALENDLY WEBHOOK (testing only)
+### ============================================================
+
+# @name simulateWebhookCreated
+# Note: real requests must include a valid Calendly-Webhook-Signature header.
+# Use this for local testing only with signature verification disabled.
+POST {{baseUrl}}/api/calendly/webhook
+Content-Type: application/json
+Calendly-Webhook-Signature: t=9999999999,v1=test-only
+
+{
+  "event": "invitee.created",
+  "payload": {
+    "event": "https://api.calendly.com/scheduled_events/test-uuid-123",
+    "event_type": {
+      "uuid": "event-type-uuid",
+      "name": "30 Minute Meeting",
+      "slug": "30min"
+    },
+    "scheduled_event": {
+      "start_time": "2026-05-01T10:00:00Z",
+      "end_time": "2026-05-01T10:30:00Z"
+    },
+    "invitee": {
+      "uuid": "invitee-uuid-123",
+      "email": "prospect@example.com",
+      "name": "Jane Prospect",
+      "created_at": "2026-04-26T09:00:00Z",
+      "canceled": false
+    }
+  }
+}
