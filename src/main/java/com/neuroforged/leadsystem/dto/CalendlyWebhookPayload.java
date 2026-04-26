@@ -19,6 +19,9 @@ public class CalendlyWebhookPayload {
         private Invitee invitee;
         private String event;
 
+        @JsonProperty("old_event")
+        private String oldEvent;
+
         @Data
         public static class EventType {
             private String uuid;

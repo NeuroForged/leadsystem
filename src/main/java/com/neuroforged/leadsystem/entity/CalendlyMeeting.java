@@ -1,12 +1,15 @@
 package com.neuroforged.leadsystem.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.ZonedDateTime;
 
 @Entity
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CalendlyMeeting {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,6 +20,10 @@ public class CalendlyMeeting {
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
     private String inviteeEmail;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private MeetingStatus status = MeetingStatus.SCHEDULED;
 
     @ManyToOne
     @JoinColumn(name = "client_id")
