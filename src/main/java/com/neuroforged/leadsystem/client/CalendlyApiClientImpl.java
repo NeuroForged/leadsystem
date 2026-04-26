@@ -69,4 +69,26 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
         log.info("Response headers from Calendly: {}", response.getHeaders());
         return response.getBody();
     }
+
+    @Override
+    public CalendlyTokenResponse refreshAccessToken(String refreshToken) {
+        log.info("CalendlyApiClient.refreshAccessToken");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, String> body = new HashMap<>();
+        body.put("grant_type", "refresh_token");
+        body.put("refresh_token", refreshToken);
+        body.put("client_id", clientId);
+        body.put("client_secret", clientSecret);
+
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
+        ResponseEntity<CalendlyTokenResponse> response = restTemplate.exchange(
+                TOKEN_URL,
+                HttpMethod.POST,
+                request,
+                CalendlyTokenResponse.class
+        );
+        return response.getBody();
+    }
 }

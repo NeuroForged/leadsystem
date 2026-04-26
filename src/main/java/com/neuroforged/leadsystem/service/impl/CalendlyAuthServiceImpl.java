@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -66,6 +67,8 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
                 .ownerType(tokenResponse.getOwnerType())
                 .organization(tokenResponse.getOrganization())
                 .clientId(clientId)
+                .tokenIssuedAt(LocalDateTime.now())
+                .requiresReauth(false)
                 .build();
 
         calendlyAccountRepository.save(account);
