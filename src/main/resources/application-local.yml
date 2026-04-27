@@ -32,6 +32,15 @@ calendly:
   webhook-signing-key: ${CALENDLY_WEBHOOK_SIGNING_KEY}
   scope: organization.read scheduled_events.read scheduled_events.read_all
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
 neuroforged:
   admin:
     email: ${NEUROFORGED_ADMIN_EMAIL}

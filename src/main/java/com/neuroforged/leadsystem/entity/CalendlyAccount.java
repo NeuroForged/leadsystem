@@ -27,4 +27,7 @@ public class CalendlyAccount {
 
     private LocalDateTime tokenIssuedAt;
     private boolean requiresReauth;
+
+    private boolean usePolling;
+    private LocalDateTime lastPolledAt;
 }
