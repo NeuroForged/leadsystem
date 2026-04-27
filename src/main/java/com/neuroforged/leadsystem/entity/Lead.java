@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_client_id", columnList = "client_id"),
                 @Index(name = "idx_lead_score", columnList = "lead_score")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_lead_email_client", columnNames = {"email", "client_id"})
         }
 )
 public class Lead {
@@ -26,7 +29,6 @@ public class Lead {
 
     private String firstName;
 
-//    @Column(unique = true)
     private String email;
 
     private String businessName;
