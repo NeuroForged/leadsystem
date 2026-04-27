@@ -1,14 +1,15 @@
 package com.neuroforged.leadsystem.entity;
 
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.time.ZonedDateTime;
 
 @Entity
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CalendlyWebhookLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

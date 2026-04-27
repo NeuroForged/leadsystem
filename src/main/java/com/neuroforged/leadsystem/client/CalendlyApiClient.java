@@ -13,4 +13,9 @@ public interface CalendlyApiClient {
      * Exchanges the authorization code for an access + refresh token.
      */
     CalendlyTokenResponse exchangeCodeForToken(String code);
+
+    /**
+     * Uses the refresh token to obtain a new access + refresh token pair.
+     */
+    CalendlyTokenResponse refreshAccessToken(String refreshToken);
 }
