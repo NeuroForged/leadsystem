@@ -32,6 +32,15 @@ calendly:
   scope: organization.read scheduled_events.read scheduled_events.read_all
 server:
   port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
 neuroforged:
   admin:
     email: ${NEUROFORGED_ADMIN_EMAIL}

@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface CalendlyWebhookLogRepository extends JpaRepository<CalendlyWebhookLog, Long> {
     List<CalendlyWebhookLog> findBySuccessFalseAndRetryCountLessThan(int maxRetries);
+    long countBySuccessFalseAndRetryCountLessThan(int maxRetries);
 }
