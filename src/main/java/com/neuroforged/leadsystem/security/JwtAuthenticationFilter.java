@@ -39,7 +39,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
-        final String email = jwtUtil.extractUsername(jwt);
+        final String email;
+        try {
+            email = jwtUtil.extractUsername(jwt);
+        } catch (io.jsonwebtoken.JwtException e) {
+            log.warn("Invalid JWT token: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var user = userRepository.findByEmail(email);
