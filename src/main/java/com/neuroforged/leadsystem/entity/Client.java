@@ -12,4 +12,5 @@ public class Client {
 
     private String name;
     private String primaryEmail;
+    private String notificationEmails;
 }

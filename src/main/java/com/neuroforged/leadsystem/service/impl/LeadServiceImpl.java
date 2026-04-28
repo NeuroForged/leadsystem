@@ -2,18 +2,22 @@ package com.neuroforged.leadsystem.service.impl;
 
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.EmailSendException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
 import com.neuroforged.leadsystem.service.EmailService;
 import com.neuroforged.leadsystem.service.LeadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +27,11 @@ import java.util.stream.Collectors;
 public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
+    private final ClientRepository clientRepository;
     private final EmailService emailService;
+
+    @Value("${neuroforged.admin.email}")
+    private String fallbackEmail;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -110,15 +118,29 @@ public class LeadServiceImpl implements LeadService {
             Created At: \{lead.getCreatedAt()}
             """;
 
-        String[] team = {
-                "joshua.white@neuroforged.com",
-                "matthew.mcfarlane@neuroforged.com"
-        };
+        String[] recipients = resolveRecipients(lead.getClientId());
 
         try {
-            emailService.sendLeadToMultiple(team, subject, body);
+            emailService.sendLeadToMultiple(recipients, subject, body);
         } catch (EmailSendException e) {
             log.warn("Failed to send notification email: {}", e.getMessage(), e);
+        }
+    }
+
+    private String[] resolveRecipients(String clientId) {
+        try {
+            Long id = Long.parseLong(clientId);
+            return clientRepository.findById(id)
+                    .map(Client::getNotificationEmails)
+                    .filter(emails -> emails != null && !emails.isBlank())
+                    .map(emails -> Arrays.stream(emails.split(","))
+                            .map(String::trim)
+                            .filter(e -> !e.isBlank())
+                            .toArray(String[]::new))
+                    .orElse(new String[]{fallbackEmail});
+        } catch (NumberFormatException e) {
+            log.warn("Could not parse clientId '{}' as Long, falling back to admin email", clientId);
+            return new String[]{fallbackEmail};
         }
     }
 

@@ -7,4 +7,5 @@ public class ClientDto {
     private Long id;
     private String name;
     private String primaryEmail;
+    private String notificationEmails;
 }
