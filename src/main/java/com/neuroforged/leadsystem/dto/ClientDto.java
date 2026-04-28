@@ -8,4 +8,5 @@ public class ClientDto {
     private String name;
     private String primaryEmail;
     private String notificationEmails;
+    private String websiteUrl;
 }

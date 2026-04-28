@@ -17,6 +17,7 @@ public class ClientMapper {
         dto.setName(client.getName());
         dto.setPrimaryEmail(client.getPrimaryEmail());
         dto.setNotificationEmails(client.getNotificationEmails());
+        dto.setWebsiteUrl(client.getWebsiteUrl());
         return dto;
     }
 
@@ -28,6 +29,7 @@ public class ClientMapper {
         client.setName(dto.getName());
         client.setPrimaryEmail(dto.getPrimaryEmail());
         client.setNotificationEmails(dto.getNotificationEmails());
+        client.setWebsiteUrl(dto.getWebsiteUrl());
         return client;
     }
 }
