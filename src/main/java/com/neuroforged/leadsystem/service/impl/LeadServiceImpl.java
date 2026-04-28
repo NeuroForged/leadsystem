@@ -30,8 +30,9 @@ public class LeadServiceImpl implements LeadService {
 
         validateLeadRequest(dto);
 
-        if (leadRepository.existsByEmail(dto.getEmail())) {
-            throw new DuplicateResourceException("Lead with email already exists: " + dto.getEmail());
+        if (leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())) {
+            throw new DuplicateResourceException(
+                    "Lead with email " + dto.getEmail() + " already exists for clientId " + dto.getClientId());
         }
 
         Lead lead = buildLeadEntity(dto);
