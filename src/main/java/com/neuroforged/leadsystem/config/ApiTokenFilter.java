@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.config;
 
-import jakarta.servlet.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,40 +13,34 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ApiTokenFilter implements Filter {
+public class ApiTokenFilter extends OncePerRequestFilter {
 
     @Value("${neuroforged.tokens.internal}")
     private String internalToken;
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        log.info("Attempting to authenticate via X-Api-Key");
-        HttpServletRequest httpReq = (HttpServletRequest) request;
-        String path = httpReq.getRequestURI();
-        String apiKey = httpReq.getHeader("X-Api-Key");
-        log.info("internal token: {}\nprovided token: {}", internalToken, apiKey);
+        String path = request.getRequestURI();
+        String apiKey = request.getHeader("X-Api-Key");
         if (path.startsWith("/api/leads") && apiKey != null && apiKey.equals(internalToken)) {
-            // 🔐 Authenticate this request manually
             UserDetails userDetails = User.withUsername("internal-bot")
-                    .password("") // password not needed
+                    .password("")
                     .roles("INTERNAL")
                     .build();
-            log.info("Authenticated by X-Api-Key");
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(httpReq));
-
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
+            log.debug("Authenticated via X-Api-Key for path: {}", path);
         }
-        log.info("Could not Authenticate by X-Api-Key");
         chain.doFilter(request, response);
     }
 }

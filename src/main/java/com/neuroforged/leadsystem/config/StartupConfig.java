@@ -24,14 +24,22 @@ public class StartupConfig {
     @Value("${neuroforged.admin.password}")
     private String adminPassword;
 
+    private static boolean isBcryptHash(String value) {
+        return value != null && value.startsWith("$2");
+    }
+
     @Bean
     public CommandLineRunner seedAdminUser() {
         return args -> {
+            String encodedPassword = isBcryptHash(adminPassword)
+                    ? adminPassword
+                    : passwordEncoder.encode(adminPassword);
+
             var existing = userRepository.findByEmail(adminEmail);
             if (existing.isEmpty()) {
                 User admin = User.builder()
                         .email(adminEmail)
-                        .password(passwordEncoder.encode(adminPassword))
+                        .password(encodedPassword)
                         .role("ADMIN")
                         .build();
 
@@ -39,10 +47,10 @@ public class StartupConfig {
                 log.info("✅ Admin user created: {}", adminEmail);
             } else {
                 User admin = existing.get();
-                if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
-                    admin.setPassword(passwordEncoder.encode(adminPassword));
+                if (!admin.getPassword().equals(encodedPassword)) {
+                    admin.setPassword(encodedPassword);
                     userRepository.save(admin);
-                    log.warn("⚠️ Admin password was not BCrypt-encoded — re-seeded with correct hash");
+                    log.warn("⚠️ Admin password updated");
                 } else {
                     log.info("ℹ️ Admin user already exists: {}", adminEmail);
                 }
