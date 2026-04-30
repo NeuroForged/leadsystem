@@ -12,7 +12,7 @@ A multi-tenant lead-capture and Calendly-integration backend. AI chatbots (one p
 - **Spring Boot 3.5.3** — web, security, data-jpa, mail, webflux, validation, actuator
 - **PostgreSQL** — JPA with `ddl-auto: update` (no migration files; schema evolves automatically)
 - **Maven** — build with `./mvnw clean package -DskipTests`
-- **Docker** — multi-stage build, deployed on **Render**
+- **Docker** — multi-stage build, deployed on **Coolify** (Hetzner, same server as scraper)
 - **Lombok** — `@Data`, `@Builder`, `@RequiredArgsConstructor` used throughout
 - **MapStruct** — DTO mapping (`ClientMapper`)
 - **jjwt 0.11.5** — JWT signing/validation
@@ -74,9 +74,9 @@ Public endpoints: `/auth/**`, `/api/calendly/webhook`, `/api/calendly/oauth/call
 | Profile | File | How activated |
 |---------|------|--------------|
 | `local` | `application-local.yml` | Default (`spring.profiles.active: local` in `application.yml`) |
-| `prod` | `application-prod.yml` | Set `SPRING_PROFILES_ACTIVE=prod` in Render |
+| `prod` | `application-prod.yml` | Set `SPRING_PROFILES_ACTIVE=prod` in Coolify |
 
-Local dev loads secrets from `.env` in the project root via `DotEnvLoader`. Prod reads them from Render environment variables.
+Local dev loads secrets from `.env` in the project root via `DotEnvLoader`. Prod reads them from Coolify environment variables.
 
 ### Full env var list
 
@@ -139,9 +139,10 @@ docker run -p 8080:8080 --env-file .env leadsystem
 
 ## Deployment
 
-- **Platform**: Render (Docker-based)
-- **Prod deploy**: push to `master` → Render auto-deploys
-- **Dev deploy**: push to `develop` → Render dev service (to be configured)
+- **Platform**: Coolify (Hetzner CX23, 178.105.49.110 — same server as scraper)
+- **Prod URL**: api.alchemizeiq.com (DNS pointed, Coolify service exists — needs env vars)
+- **Prod deploy**: push to `master` → Coolify auto-deploys
+- **Dev deploy**: push to `develop` → Coolify dev service (to be configured)
 - **PR workflow**: feature branch → PR to `develop` → merge to `master` for prod
 - **`gh` CLI**: installed and working
 
