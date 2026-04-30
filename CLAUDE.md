@@ -140,9 +140,10 @@ docker run -p 8080:8080 --env-file .env leadsystem
 ## Deployment
 
 - **Platform**: Coolify (Hetzner CX23, 178.105.49.110 — same server as scraper)
-- **Prod URL**: api.alchemizeiq.com (DNS pointed, Coolify service exists — needs env vars)
+- **Prod URL**: api.alchemizeiq.com (DNS pointed, Coolify service provisioned, env vars configured)
 - **Prod deploy**: push to `master` → Coolify auto-deploys
-- **Dev deploy**: push to `develop` → Coolify dev service (to be configured)
+- **Dev deploy**: push to `develop` → Coolify auto-deploys to dev service
+- **Dev URL**: api-dev.alchemizeiq.com (Coolify service provisioned, env vars configured)
 - **PR workflow**: feature branch → PR to `develop` → merge to `master` for prod
 - **`gh` CLI**: installed and working
 
@@ -153,12 +154,14 @@ Project: **KAN** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.ne
 | Epic | Status | Tickets |
 |------|--------|---------|
 | **KAN-4** Security & Auth Hardening | ✅ All done | KAN-8, 9, 10, 11 |
-| **KAN-5** Calendly Integration Reliability | 🔄 In review | KAN-12 ✓ (PR#5), KAN-13 ✓, KAN-14 ✓, KAN-15 ✓, KAN-16 ✓, KAN-17 ✓ (PR#5) |
-| **KAN-6** Lead Pipeline Polish | 🔲 Open | KAN-18, KAN-19, KAN-20 |
+| **KAN-5** Calendly Integration Reliability | ✅ All done | KAN-12 ✓ (PR#5), KAN-13 ✓, KAN-14 ✓, KAN-15 ✓, KAN-16 ✓, KAN-17 ✓ (PR#5) |
+| **KAN-6** Lead Pipeline Polish | ✅ All done | KAN-18 ✓, KAN-19 ✓, KAN-20 ✓ |
 | **KAN-7** Post-MVP Scalability | 🔲 Open | KAN-21, KAN-22 |
 
 ## Known issues / gotchas
+- `Lead.clientId` is a `String`, not a FK to `Client.id` (Long) — by design; chatbots pass string IDs.
+- `ClientServiceImpl` throws `RuntimeException` for not-found clients instead of a 404 — KAN-30.
+- No schema migrations (Flyway/Liquibase) — Hibernate `ddl-auto=update`. Add nullable columns only to avoid startup failures on prod data.
 
-- `Lead.clientId` is a `String` — not a FK to `Client`. The duplicate email check (`LeadRepository.existsByEmail`) is global, not per-client. KAN-19 fixes this.
-- `LeadNotFoundException` is an empty class, never used. KAN-20 cleans this up.
-- Notification emails in `LeadServiceImpl.sendNotificationEmails()` are hardcoded to internal addresses. KAN-18 fixes this.
+
+
