@@ -1,0 +1,1 @@
+Given a Jira ticket key (e.g. KAN-19), fetch the ticket summary, pull the latest develop, and create a new feature branch named `feature/KAN-XX-short-description`. Switch to it and confirm the branch is ready to work on.

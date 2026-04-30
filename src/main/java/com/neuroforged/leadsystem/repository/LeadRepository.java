@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface LeadRepository extends JpaRepository<Lead, Long> {
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailAndClientId(String email, String clientId);
 
     boolean existsByBusinessName(String businessName);
 

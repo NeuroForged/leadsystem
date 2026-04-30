@@ -1,13 +1,18 @@
 package com.neuroforged.leadsystem.client;
 
 import com.neuroforged.leadsystem.dto.CalendlyTokenResponse;
+import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
+import com.neuroforged.leadsystem.dto.CalendlyEventInviteesResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +34,7 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
 
     private static final String TOKEN_URL = "https://auth.calendly.com/oauth/token";
     private static final String AUTH_URL = "https://auth.calendly.com/oauth/authorize";
+    private static final String API_BASE = "https://api.calendly.com";
 
     @Override
     public String exchangeAuthCodeForTokens(String state) {
@@ -89,6 +95,36 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
                 request,
                 CalendlyTokenResponse.class
         );
+        return response.getBody();
+    }
+
+    @Override
+    public CalendlyScheduledEventsResponse fetchScheduledEvents(String accessToken, String organizationUri, ZonedDateTime minStartTime, String status) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(API_BASE + "/scheduled_events")
+                .queryParam("organization", organizationUri)
+                .queryParam("min_start_time", minStartTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                .queryParam("status", status)
+                .queryParam("count", 100)
+                .toUriString();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        ResponseEntity<CalendlyScheduledEventsResponse> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), CalendlyScheduledEventsResponse.class);
+        return response.getBody();
+    }
+
+    @Override
+    public CalendlyEventInviteesResponse fetchEventInvitees(String accessToken, String eventUuid) {
+        String url = API_BASE + "/scheduled_events/" + eventUuid + "/invitees";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        ResponseEntity<CalendlyEventInviteesResponse> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), CalendlyEventInviteesResponse.class);
         return response.getBody();
     }
 }

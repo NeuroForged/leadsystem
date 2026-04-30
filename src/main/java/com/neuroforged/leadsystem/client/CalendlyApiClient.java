@@ -1,21 +1,20 @@
 package com.neuroforged.leadsystem.client;
 
 import com.neuroforged.leadsystem.dto.CalendlyTokenResponse;
+import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
+import com.neuroforged.leadsystem.dto.CalendlyEventInviteesResponse;
+
+import java.time.ZonedDateTime;
 
 public interface CalendlyApiClient {
 
-    /**
-     * Builds an authorization URL for Calendly with the given OAuth state.
-     */
     String exchangeAuthCodeForTokens(String state);
 
-    /**
-     * Exchanges the authorization code for an access + refresh token.
-     */
     CalendlyTokenResponse exchangeCodeForToken(String code);
 
-    /**
-     * Uses the refresh token to obtain a new access + refresh token pair.
-     */
     CalendlyTokenResponse refreshAccessToken(String refreshToken);
+
+    CalendlyScheduledEventsResponse fetchScheduledEvents(String accessToken, String organizationUri, ZonedDateTime minStartTime, String status);
+
+    CalendlyEventInviteesResponse fetchEventInvitees(String accessToken, String eventUuid);
 }

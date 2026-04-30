@@ -1,16 +1,18 @@
-# NeuroForged Lead System — Claude Context
+# Alchemize Lead System — Claude Context
 
 ## What this is
 
 A multi-tenant lead-capture and Calendly-integration backend. AI chatbots (one per client) submit leads via API key. The admin dashboard uses JWT auth. Each client connects their Calendly account via OAuth; the system tracks meetings and matches them to leads.
 
+**Company:** Alchemize (repo and package names still say `neuroforged` — do not rename them).
+
 ## Tech stack
 
 - **Java 21** (preview features enabled — `STR."""` template strings are used)
-- **Spring Boot 3.5.3** — web, security, data-jpa, mail, webflux, validation
+- **Spring Boot 3.5.3** — web, security, data-jpa, mail, webflux, validation, actuator
 - **PostgreSQL** — JPA with `ddl-auto: update` (no migration files; schema evolves automatically)
 - **Maven** — build with `./mvnw clean package -DskipTests`
-- **Docker** — multi-stage build, deployed on **Render**
+- **Docker** — multi-stage build, deployed on **Coolify** (Hetzner, same server as scraper)
 - **Lombok** — `@Data`, `@Builder`, `@RequiredArgsConstructor` used throughout
 - **MapStruct** — DTO mapping (`ClientMapper`)
 - **jjwt 0.11.5** — JWT signing/validation
@@ -26,9 +28,10 @@ com.neuroforged.leadsystem
 ├── dto/             # Request/response DTOs
 ├── entity/          # JPA entities
 ├── exception/       # Custom exceptions + GlobalExceptionHandler
+├── health/          # Spring Boot Actuator health indicators (CalendlyHealthIndicator)
 ├── mapper/          # MapStruct mappers
 ├── repository/      # Spring Data JPA repositories
-├── scheduler/       # @Scheduled jobs (webhook retry, polling)
+├── scheduler/       # @Scheduled jobs (webhook retry, Calendly polling)
 ├── security/        # JWT, SecurityConfig, auth filters
 ├── service/         # Interfaces
 └── service/impl/    # Implementations
@@ -41,9 +44,9 @@ com.neuroforged.leadsystem
 | `Lead` | `lead` | Lead capture data, scoped to `clientId` (String) |
 | `Client` | `client` | Agency/client record, `id` is Long |
 | `User` | `users` | Admin users — email/password/role |
-| `CalendlyAccount` | `calendly_account` | OAuth tokens per client (`clientId` Long, unique) |
+| `CalendlyAccount` | `calendly_account` | OAuth tokens per client (`clientId` Long, unique). Fields: `usePolling` (bool), `lastPolledAt` (LocalDateTime) for polling-mode clients |
 | `CalendlyIntegration` | `calendly_integration` | Tracks OAuth flow state + `completed` flag |
-| `CalendlyMeeting` | `calendly_meeting` | Booked meetings synced from Calendly |
+| `CalendlyMeeting` | `calendly_meeting` | Booked meetings synced from Calendly (webhook or polling) |
 | `CalendlyWebhookLog` | `calendly_webhook_log` | Webhook event log — has `success`, `retryCount`, `errorDetails` |
 
 **Important:** `Lead.clientId` is a `String`, but `Client.id` and `CalendlyAccount.clientId` are `Long`. They are related but not a foreign key — the chatbot passes a string client ID when submitting leads.
@@ -57,16 +60,23 @@ Two parallel auth paths, both wired in `SecurityConfig`:
 
 JWT filter only runs if the API key filter didn't authenticate the request.
 
-Public endpoints: `/auth/**`, `/api/calendly/webhook`, `/api/calendly/oauth/callback`, all `OPTIONS` (CORS preflight).
+Public endpoints: `/auth/**`, `/api/calendly/webhook`, `/api/calendly/oauth/callback`, `/actuator/health`, all `OPTIONS` (CORS preflight).
+
+## Schedulers
+
+| Scheduler | Interval | Purpose |
+|-----------|----------|---------|
+| `CalendlyWebhookRetryScheduler` | Every 5 min | Retries failed webhook deliveries (max 3 attempts, then dead-letters + admin email) |
+| `CalendlyPollingScheduler` | Every 15 min (configurable via `calendly.polling-interval-ms`) | Polls Calendly API for accounts with `usePolling=true` — for clients on plans without webhook support |
 
 ## Profiles & configuration
 
 | Profile | File | How activated |
 |---------|------|--------------|
 | `local` | `application-local.yml` | Default (`spring.profiles.active: local` in `application.yml`) |
-| `prod` | `application-prod.yml` | Set `SPRING_PROFILES_ACTIVE=prod` in Render |
+| `prod` | `application-prod.yml` | Set `SPRING_PROFILES_ACTIVE=prod` in Coolify |
 
-Local dev loads secrets from `.env` in the project root via `DotEnvLoader`. Prod reads them from Render environment variables.
+Local dev loads secrets from `.env` in the project root via `DotEnvLoader`. Prod reads them from Coolify environment variables.
 
 ### Full env var list
 
@@ -119,6 +129,9 @@ NEUROFORGED_CORS_ALLOWED_ORIGINS   # prod only — comma-separated frontend URLs
 # Build JAR
 ./mvnw clean package -DskipTests
 
+# Run tests
+./mvnw test
+
 # Docker
 docker build -t leadsystem .
 docker run -p 8080:8080 --env-file .env leadsystem
@@ -126,26 +139,26 @@ docker run -p 8080:8080 --env-file .env leadsystem
 
 ## Deployment
 
-- **Platform**: Render (Docker-based)
-- **Prod deploy**: push to `master` → Render auto-deploys
-- **Dev deploy**: (to be set up) push to `develop` → Render dev service auto-deploys
+- **Platform**: Coolify (Hetzner CX23, 178.105.49.110 — same server as scraper)
+- **Prod URL**: api.alchemizeiq.com (DNS pointed, Coolify service exists — needs env vars)
+- **Prod deploy**: push to `master` → Coolify auto-deploys
+- **Dev deploy**: push to `develop` → Coolify dev service (to be configured)
 - **PR workflow**: feature branch → PR to `develop` → merge to `master` for prod
+- **`gh` CLI**: installed and working
 
 ## Jira board
 
 Project: **KAN** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.net)
 
-Current open epics (priority order):
-- **KAN-4** Security & Auth Hardening (Highest) — KAN-8 ✓, KAN-9 ✓, KAN-10 ✓, KAN-11 ✓
-- **KAN-5** Calendly Integration Reliability (High) — KAN-12, KAN-13, KAN-14, KAN-15, KAN-16
-- **KAN-6** Lead Pipeline Polish (Medium) — KAN-17, KAN-18, KAN-19, KAN-20
-- **KAN-7** Post-MVP Scalability (Low)
+| Epic | Status | Tickets |
+|------|--------|---------|
+| **KAN-4** Security & Auth Hardening | ✅ All done | KAN-8, 9, 10, 11 |
+| **KAN-5** Calendly Integration Reliability | 🔄 In review | KAN-12 ✓ (PR#5), KAN-13 ✓, KAN-14 ✓, KAN-15 ✓, KAN-16 ✓, KAN-17 ✓ (PR#5) |
+| **KAN-6** Lead Pipeline Polish | 🔲 Open | KAN-18, KAN-19, KAN-20 |
+| **KAN-7** Post-MVP Scalability | 🔲 Open | KAN-21, KAN-22 |
 
 ## Known issues / gotchas
 
-- `Lead.clientId` is a `String` — not a FK to `Client`. The duplicate email check (`LeadRepository.existsByEmail`) is global, not per-client (KAN-19 fixes this).
-- `CalendlyWebhookRetryScheduler.retryFailedWebhooks()` is a stub — logs but does nothing (KAN-16).
-- `LeadNotFoundException` is an empty class, never used (KAN-20).
-- Notification emails in `LeadServiceImpl.sendNotificationEmails()` are hardcoded to internal addresses (KAN-18).
-- No health check endpoint yet (KAN-17).
-- Calendly access tokens expire after ~2 hours; refresh not yet implemented (KAN-14).
+- `Lead.clientId` is a `String` — not a FK to `Client`. The duplicate email check (`LeadRepository.existsByEmail`) is global, not per-client. KAN-19 fixes this.
+- `LeadNotFoundException` is an empty class, never used. KAN-20 cleans this up.
+- Notification emails in `LeadServiceImpl.sendNotificationEmails()` are hardcoded to internal addresses. KAN-18 fixes this.

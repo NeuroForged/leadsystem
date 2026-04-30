@@ -1,0 +1,1 @@
+Fetch all non-Done issues from the KAN project on alchemizeiq.atlassian.net. Group by epic, showing ticket key, priority, status, and summary. Flag anything currently In Progress or Ready for Review at the top of the output.
