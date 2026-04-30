@@ -149,18 +149,18 @@ docker run -p 8080:8080 --env-file .env leadsystem
 
 ## Jira board
 
-Project: **KAN** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.net)
+Project: **LSB** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.net)
 
 | Epic | Status | Tickets |
 |------|--------|---------|
-| **KAN-4** Security & Auth Hardening | ✅ All done | KAN-8, 9, 10, 11 |
-| **KAN-5** Calendly Integration Reliability | ✅ All done | KAN-12 ✓ (PR#5), KAN-13 ✓, KAN-14 ✓, KAN-15 ✓, KAN-16 ✓, KAN-17 ✓ (PR#5) |
-| **KAN-6** Lead Pipeline Polish | ✅ All done | KAN-18 ✓, KAN-19 ✓, KAN-20 ✓ |
-| **KAN-7** Post-MVP Scalability | 🔲 Open | KAN-21, KAN-22 |
+| **LSB-4** Security & Auth Hardening | ✅ All done | LSB-8, 9, 10, 11 |
+| **LSB-5** Calendly Integration Reliability | ✅ All done | LSB-12 ✓ (PR#5), LSB-13 ✓, LSB-14 ✓, LSB-15 ✓, LSB-16 ✓, LSB-17 ✓ (PR#5) |
+| **LSB-6** Lead Pipeline Polish | ✅ All done | LSB-18 ✓, LSB-19 ✓, LSB-20 ✓ |
+| **LSB-7** Post-MVP Scalability | 🔲 Open | LSB-21, LSB-22 |
 
 ## Known issues / gotchas
 - `Lead.clientId` is a `String`, not a FK to `Client.id` (Long) — by design; chatbots pass string IDs.
-- `ClientServiceImpl` throws `RuntimeException` for not-found clients instead of a 404 — KAN-30.
+- `ClientServiceImpl` throws `RuntimeException` for not-found clients instead of a 404 — LSB-30.
 - No schema migrations (Flyway/Liquibase) — Hibernate `ddl-auto=update`. Add nullable columns only to avoid startup failures on prod data.
 
 
