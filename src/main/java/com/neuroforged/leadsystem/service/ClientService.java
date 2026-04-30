@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface ClientService {
     ClientDto createClient(ClientDto dto);
     ClientDto getClientDtoById(Long clientId);
+    ClientDto updateClient(Long clientId, ClientDto dto);
     Optional<Client> getClientById(Long clientId);
     Optional<Client> findClientByEmail(String email);
 }

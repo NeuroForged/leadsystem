@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+import static jakarta.persistence.EnumType.STRING;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -48,6 +50,9 @@ public class Lead {
     private String leadChallenge;
 
     private String clientId;
+
+    @Enumerated(STRING)
+    private LeadStatus status;
 
     @Column(updatable = false)
     @CreationTimestamp
