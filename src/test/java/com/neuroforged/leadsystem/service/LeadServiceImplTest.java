@@ -66,7 +66,7 @@ class LeadServiceImplTest {
         LeadRequestDTO dto = validRequest();
         Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientId(dto.getClientId()).build();
 
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(clientRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -79,7 +79,7 @@ class LeadServiceImplTest {
     @Test
     void createLead_duplicateEmail_throwsDuplicateResourceException() {
         LeadRequestDTO dto = validRequest();
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(true);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(true);
 
         assertThatThrownBy(() -> leadService.createLead(dto))
                 .isInstanceOf(DuplicateResourceException.class)
@@ -132,7 +132,7 @@ class LeadServiceImplTest {
         client.setId(1L);
         client.setNotificationEmails("owner@client.com, manager@client.com");
 
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
 
@@ -151,7 +151,7 @@ class LeadServiceImplTest {
         client.setId(1L);
         client.setNotificationEmails(null);
 
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
 
@@ -167,7 +167,7 @@ class LeadServiceImplTest {
         LeadRequestDTO dto = validRequest();
         Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientId("1").build();
 
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(clientRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -184,7 +184,7 @@ class LeadServiceImplTest {
         dto.setClientId("chatbot-abc");
         Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientId("chatbot-abc").build();
 
-        when(leadRepository.existsByEmail(dto.getEmail())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
 
         leadService.createLead(dto);

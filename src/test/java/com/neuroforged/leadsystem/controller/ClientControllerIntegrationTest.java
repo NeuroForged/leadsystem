@@ -96,9 +96,9 @@ class ClientControllerIntegrationTest {
     }
 
     @Test
-    void getClient_nonExistentId_returns500() throws Exception {
+    void getClient_nonExistentId_returns404() throws Exception {
         mockMvc.perform(get("/api/clients/99999")
                         .header("Authorization", "Bearer " + adminJwt))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isNotFound());
     }
 }

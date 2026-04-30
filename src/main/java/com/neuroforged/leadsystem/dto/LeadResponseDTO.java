@@ -1,9 +1,9 @@
 package com.neuroforged.leadsystem.dto;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
+import com.neuroforged.leadsystem.entity.LeadStatus;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
 public class LeadResponseDTO {
@@ -22,6 +22,7 @@ public class LeadResponseDTO {
     private Integer leadScore;
     private String leadChallenge;
     private String clientId;
+    private LeadStatus status;
     private LocalDateTime createdAt;
 
 }
