@@ -29,4 +29,11 @@ public class ClientController {
         log.info("Controller for getting client by ID (Admin Only)");
         return ResponseEntity.ok(clientService.getClientDtoById(id));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDto> updateClient(@PathVariable Long id, @RequestBody ClientDto clientDto) {
+        log.info("Controller for updating client ID: {} (Admin Only)", id);
+        return ResponseEntity.ok(clientService.updateClient(id, clientDto));
+    }
 }

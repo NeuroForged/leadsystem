@@ -2,11 +2,14 @@ package com.neuroforged.leadsystem.service.impl;
 
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
+import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
+import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.EmailSendException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
+import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
 import com.neuroforged.leadsystem.service.EmailService;
@@ -14,6 +17,8 @@ import com.neuroforged.leadsystem.service.LeadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -52,10 +57,26 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
-    public List<LeadResponseDTO> getAllLeads() {
-        return leadRepository.findAll().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+    public PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, Pageable pageable) {
+        Page<Lead> page;
+        if (clientId != null && !clientId.isBlank() && status != null) {
+            page = leadRepository.findByClientIdAndStatus(clientId, status, pageable);
+        } else if (clientId != null && !clientId.isBlank()) {
+            page = leadRepository.findByClientId(clientId, pageable);
+        } else if (status != null) {
+            page = leadRepository.findByStatus(status, pageable);
+        } else {
+            page = leadRepository.findAll(pageable);
+        }
+        return PagedResponse.from(page.map(this::mapToDTO));
+    }
+
+    @Override
+    public LeadResponseDTO updateLeadStatus(Long id, LeadStatus status) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lead not found with ID: " + id));
+        lead.setStatus(status);
+        return mapToDTO(leadRepository.save(lead));
     }
 
     public List<LeadResponseDTO> getLeadsByClientId(String clientId) {
@@ -98,6 +119,7 @@ public class LeadServiceImpl implements LeadService {
                 .leadScore(dto.getLeadScore())
                 .leadChallenge(dto.getLeadChallenge())
                 .clientId(dto.getClientId())
+                .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -159,6 +181,7 @@ public class LeadServiceImpl implements LeadService {
         dto.setLeadScore(lead.getLeadScore());
         dto.setLeadChallenge(lead.getLeadChallenge());
         dto.setClientId(lead.getClientId());
+        dto.setStatus(lead.getStatus());
         dto.setCreatedAt(lead.getCreatedAt());
         return dto;
     }
