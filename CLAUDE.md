@@ -159,6 +159,6 @@ Project: **KAN** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.ne
 
 ## Known issues / gotchas
 
-- `Lead.clientId` is a `String` — not a FK to `Client`. The duplicate email check (`LeadRepository.existsByEmail`) is global, not per-client. KAN-19 fixes this.
-- `LeadNotFoundException` is an empty class, never used. KAN-20 cleans this up.
-- Notification emails in `LeadServiceImpl.sendNotificationEmails()` are hardcoded to internal addresses. KAN-18 fixes this.
+- Rate limiting (Bucket4j) is scoped per API key value, but all clients currently share the same `NEUROFORGED_INTERNAL_TOKEN`. Rate limit is effectively global until per-client API keys are implemented.
+- `ddl-auto: update` is still in use — Flyway migration (LSB-36) is the next schema-management improvement. Be careful with NOT NULL columns and unique constraints on existing tables.
+- The Jira board table below is partially stale (references KAN-XX ticket keys from before the board was renamed to LSB). Treat LSB tickets in Jira as authoritative.
