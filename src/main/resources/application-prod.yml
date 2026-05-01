@@ -53,3 +53,6 @@ neuroforged:
     from: ${NEUROFORGED_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+scraper:
+  api-url: ${SCRAPER_API_URL}
+  api-key: ${SCRAPER_API_KEY}
