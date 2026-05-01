@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(C:/Python313/python.exe -c ' *)",
+      "Bash(xargs grep *)",
+      "Bash(render --version)",
+      "Bash(grep -v \"^$\")",
+      "Bash(openssl rand *)",
+      "Bash(/c/Python313/python.exe -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('status:', d.get\\('status'\\)\\); logs=d.get\\('logs',''\\); print\\(logs[-3000:] if len\\(logs\\)>3000 else logs\\)\")",
+      "Bash(curl -s http://178.105.49.110:8000/api/v1/applications/ueabvbr5j2a503oi5ipy1d00/logs -H 'Authorization: Bearer 1|yAqKRpx5VapisjIyTNDr4Kfe3GUoW1IO3O6wydZHa60ca75a')",
+      "Bash(/c/Python313/python.exe -)",
+      "Bash(/c/Python313/python.exe -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('status:', d.get\\('status'\\)\\)\")",
+      "Bash(sed -i 's/api\\\\.alchemizeiq\\\\.com \\(DNS pointed, Coolify service exists.*needs env vars\\)/api.alchemizeiq.com \\(DNS pointed, Coolify service provisioned, env vars configured\\)/' CLAUDE.md)",
+      "Bash(sed -i 's/push to `develop` .* Coolify dev service \\(to be configured\\)/push to `develop` → Coolify auto-deploys to dev service/' CLAUDE.md)",
+      "Bash(sed -i '/\\\\*\\\\*Dev deploy\\\\*\\\\*: push to/a - **Dev URL**: api-dev.alchemizeiq.com \\(Coolify service provisioned, env vars configured\\)' CLAUDE.md)",
+      "Bash(sed -i 's/- `LeadNotFoundException` is an empty class.*//' CLAUDE.md)",
+      "Bash(sed -i 's/- Notification emails in `LeadServiceImpl.sendNotificationEmails\\\\\\(\\\\\\)` are hardcoded.*//' CLAUDE.md)",
+      "Bash(sed -i '/Notification emails in.*KAN-18/d' CLAUDE.md)",
+      "Bash(sed -i 's/| \\\\*\\\\*KAN-6\\\\*\\\\* Lead Pipeline Polish | 🔲 Open | KAN-18, KAN-19, KAN-20 |/| **KAN-6** Lead Pipeline Polish | ✅ All done | KAN-18 ✓, KAN-19 ✓, KAN-20 ✓ |/' CLAUDE.md)",
+      "Bash(sed -i 's/| \\\\*\\\\*KAN-5\\\\*\\\\* Calendly Integration Reliability | 🔄 In review |/| **KAN-5** Calendly Integration Reliability | ✅ All done |/' CLAUDE.md)"
+    ]
+  }
+}

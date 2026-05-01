@@ -25,12 +25,25 @@ public class ApiTokenFilter extends OncePerRequestFilter {
     @Value("${neuroforged.tokens.internal}")
     private String internalToken;
 
+    private final RateLimitService rateLimitService;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         String path = request.getRequestURI();
         String apiKey = request.getHeader("X-Api-Key");
+
         if (path.startsWith("/api/leads") && apiKey != null && apiKey.equals(internalToken)) {
+            if (!rateLimitService.tryConsume(apiKey)) {
+                log.warn("Rate limit exceeded for API key on path: {}", path);
+                long retryAfter = rateLimitService.getSecondsUntilRefill(apiKey);
+                response.setStatus(429);
+                response.setHeader("Retry-After", String.valueOf(retryAfter));
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Too Many Requests\",\"retryAfterSeconds\":" + retryAfter + "}");
+                return;
+            }
+
             UserDetails userDetails = User.withUsername("internal-bot")
                     .password("")
                     .roles("INTERNAL")
