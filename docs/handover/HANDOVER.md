@@ -96,12 +96,8 @@ cd C:\Users\Josh\Desktop\NeuroForged\alchemize-portal
 gh pr create --base main --head develop --title "release: scrape job history, presets, knowledge base (PORTAL-78/79/80)" --body "..."
 ```
 
-### 2. Verify prod is back up
-After Coolify redeploys (triggered by PR #21 merge to master):
-```bash
-curl -s https://api.alchemizeiq.com/actuator/health
-# Expected: {"status":"UP"}
-```
+### 2. Prod is UP ✅
+`{"status":"UP"}` confirmed at 15:27 UTC 2026-05-02. V4 migration applied, container running cleanly.
 
 ### 3. Test scraper integration end-to-end
 - Trigger a scrape from EditClientSlideOver → verify job appears in history
@@ -139,8 +135,11 @@ curl -s https://api.alchemizeiq.com/actuator/health
 | V1 | `V1__initial_schema.sql` | Full baseline — all tables at PR #20 merge |
 | V2 | `V2__scrape_jobs_presets.sql` | `ALTER TABLE calendly_meeting ADD invitee_name`; creates `scrape_job`, `scrape_preset` |
 | V3 | `V3__knowledge_base.sql` | Creates `knowledge_base_document` + index |
+| V4 | `V4__client_missing_columns.sql` | Adds `api_key` (with UUID backfill) + `last_scraped_at` to `client` table |
 
-**Important:** `baseline-on-migrate=true` — existing prod DB will be baselined at V1 then V2+V3 run automatically.
+**Important:** `baseline-on-migrate=true` — existing prod DB will be baselined at V1 then V2+V3+V4 run automatically.
+
+**Gotcha — Flyway baseline skips SQL:** When an existing DB is baselined, V1 SQL never runs. Any columns added to entities AFTER the last `ddl-auto:update` deployment but included in the V1 SQL will be missing from the prod DB. Always add a migration for columns that bridged this gap (V2 fixed `invitee_name`, V4 fixed `api_key` + `last_scraped_at`).
 
 ---
 
