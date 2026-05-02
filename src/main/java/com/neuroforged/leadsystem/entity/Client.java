@@ -25,4 +25,6 @@ public class Client {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    private LocalDateTime lastScrapedAt;
 }

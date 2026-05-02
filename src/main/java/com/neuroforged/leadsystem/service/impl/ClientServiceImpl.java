@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,5 +66,13 @@ public class ClientServiceImpl implements ClientService {
     public void deleteClient(Long id) {
         if (!clientRepository.existsById(id)) throw new ResourceNotFoundException("Client not found: " + id);
         clientRepository.deleteById(id);
+    }
+
+    @Override
+    public void updateScrapeTimestamp(Long id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found: " + id));
+        client.setLastScrapedAt(LocalDateTime.now());
+        clientRepository.save(client);
     }
 }

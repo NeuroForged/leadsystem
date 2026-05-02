@@ -14,4 +14,5 @@ public interface ClientService {
     Optional<Client> findClientByEmail(String email);
     List<ClientDto> getAllClients();
     void deleteClient(Long id);
+    void updateScrapeTimestamp(Long id);
 }
