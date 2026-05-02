@@ -19,6 +19,12 @@ public class ClientMapper {
 
     public ClientDto toDto(Client client) {
         if (client == null) return null;
+        boolean connected = calendlyAccountRepository.findByClientId(client.getId()).isPresent();
+        return toDto(client, connected);
+    }
+
+    public ClientDto toDto(Client client, boolean calendlyConnected) {
+        if (client == null) return null;
         ClientDto dto = new ClientDto();
         dto.setId(client.getId());
         dto.setName(client.getName());
@@ -34,7 +40,7 @@ public class ClientMapper {
                 ? List.of()
                 : Arrays.asList(emails.split(",\\s*")));
 
-        dto.setCalendlyConnected(calendlyAccountRepository.findByClientId(client.getId()).isPresent());
+        dto.setCalendlyConnected(calendlyConnected);
 
         return dto;
     }

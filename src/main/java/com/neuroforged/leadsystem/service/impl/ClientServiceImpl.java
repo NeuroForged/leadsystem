@@ -4,6 +4,7 @@ import com.neuroforged.leadsystem.dto.ClientDto;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
 import com.neuroforged.leadsystem.mapper.ClientMapper;
+import com.neuroforged.leadsystem.repository.CalendlyAccountRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.service.ClientService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
+    private final CalendlyAccountRepository calendlyAccountRepository;
 
     @Override
     public ClientDto createClient(ClientDto dto) {
@@ -61,7 +65,13 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     public List<ClientDto> getAllClients() {
-        return clientRepository.findAll().stream().map(clientMapper::toDto).toList();
+        List<Client> clients = clientRepository.findAll();
+        Set<Long> connectedIds = calendlyAccountRepository
+                .findAllByClientIdIn(clients.stream().map(Client::getId).collect(Collectors.toSet()))
+                .stream().map(ca -> ca.getClientId()).collect(Collectors.toSet());
+        return clients.stream()
+                .map(c -> clientMapper.toDto(c, connectedIds.contains(c.getId())))
+                .toList();
     }
 
     @Override
