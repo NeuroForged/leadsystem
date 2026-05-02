@@ -2,16 +2,26 @@ package com.neuroforged.leadsystem.mapper;
 
 import com.neuroforged.leadsystem.dto.ClientDto;
 import com.neuroforged.leadsystem.entity.Client;
+import com.neuroforged.leadsystem.repository.CalendlyAccountRepository;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ClientMapperTest {
 
-    private final ClientMapper mapper = new ClientMapper();
+    private final CalendlyAccountRepository calendlyRepo = mock(CalendlyAccountRepository.class);
+    private final ClientMapper mapper = new ClientMapper(calendlyRepo);
 
     @Test
     void toDto_mapsAllFields() {
+        when(calendlyRepo.findByClientId(anyLong())).thenReturn(Optional.empty());
+
         Client client = new Client();
         client.setId(1L);
         client.setName("Acme");
@@ -24,8 +34,9 @@ class ClientMapperTest {
         assertThat(dto.getId()).isEqualTo(1L);
         assertThat(dto.getName()).isEqualTo("Acme");
         assertThat(dto.getPrimaryEmail()).isEqualTo("contact@acme.com");
-        assertThat(dto.getNotificationEmails()).isEqualTo("a@acme.com,b@acme.com");
+        assertThat(dto.getNotificationEmails()).containsExactly("a@acme.com", "b@acme.com");
         assertThat(dto.getWebsiteUrl()).isEqualTo("https://acme.com");
+        assertThat(dto.isCalendlyConnected()).isFalse();
     }
 
     @Test
@@ -34,7 +45,7 @@ class ClientMapperTest {
         dto.setId(2L);
         dto.setName("Beta Corp");
         dto.setPrimaryEmail("hello@beta.com");
-        dto.setNotificationEmails("notify@beta.com");
+        dto.setNotificationEmails(List.of("notify@beta.com"));
         dto.setWebsiteUrl("https://beta.com");
 
         Client entity = mapper.toEntity(dto);
