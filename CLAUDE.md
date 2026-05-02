@@ -152,17 +152,23 @@ docker run -p 8080:8080 --env-file .env leadsystem
 
 ## Jira board
 
-Project: **KAN** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.net)
+Project: **LSB** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.net/jira/software/projects/LSB)
 
-| Epic | Status | Tickets |
-|------|--------|---------|
-| **KAN-4** Security & Auth Hardening | ✅ All done | KAN-8, 9, 10, 11 |
-| **KAN-5** Calendly Integration Reliability | 🔄 In review | KAN-12 ✓ (PR#5), KAN-13 ✓, KAN-14 ✓, KAN-15 ✓, KAN-16 ✓, KAN-17 ✓ (PR#5) |
-| **KAN-6** Lead Pipeline Polish | 🔲 Open | KAN-18, KAN-19, KAN-20 |
-| **KAN-7** Post-MVP Scalability | 🔲 Open | KAN-21, KAN-22 |
+| Epic | Status | Key tickets |
+|------|--------|-------------|
+| **LSB-4** Security & Auth Hardening | ✅ Done | LSB-8, 9, 10, 11 |
+| **LSB-5** Calendly Integration Reliability | ✅ Done | LSB-12, 13, 14, 15, 16, 17 |
+| **LSB-6** Lead Pipeline Polish | ✅ Done | LSB-18, 19, 20 |
+| **LSB-7** Post-MVP Scalability | 🔲 Open | LSB-22 (Fireflies), LSB-36 (Flyway), LSB-80 (analytics endpoint) |
+| **LSB-42** Lead System Integration | 🔄 In Progress | Portal ↔ backend integration ongoing |
+
+**Completed standalone work (LSB-21–LSB-79):** test suite (LSB-21/24-29), ResourceNotFoundException (LSB-30), PUT clients (LSB-31), input validation (LSB-32), paginated leads (LSB-33), audit timestamps (LSB-34), LeadStatus (LSB-35), rate limiting (LSB-37), scraper integration (LSB-38-50+), websiteUrl (LSB-23), CORS wildcard fix (LSB-79).
 
 ## Known issues / gotchas
 
-- `Lead.clientId` is a `String` — not a FK to `Client`. The duplicate email check (`LeadRepository.existsByEmail`) is global, not per-client. KAN-19 fixes this.
-- `LeadNotFoundException` is an empty class, never used. KAN-20 cleans this up.
-- Notification emails in `LeadServiceImpl.sendNotificationEmails()` are hardcoded to internal addresses. KAN-18 fixes this.
+- **CORS wildcard + credentials**: `setAllowedOrigins("*")` + `setAllowedCredentials(true)` is illegal in Spring. `CorsConfig` now branches on `*` and calls `setAllowedOriginPatterns("*")` instead (LSB-79, fixed). If this breaks again, that's the first place to look.
+- **`Lead.clientId` is a `String`**: not a FK to `Client`. The duplicate email check is now per-client (composite unique index on `email + client_id`), fixed in LSB-19.
+- **`ddl-auto: update`**: still in use (no Flyway). Adding `NOT NULL` columns requires a DB default or nullable — don't forget this. LSB-36 will migrate to Flyway.
+- **Java 21 preview**: `STR."""..."""` template strings in `LeadServiceImpl`. Keep `--enable-preview` in Maven compiler plugin.
+- **Rate limiter (LSB-37)**: Bucket4j on `POST /api/leads`. Rapid test submissions (e.g. seeding DB) need `sleep 2` between requests or they get throttled.
+- **Em dash in bash heredoc**: Unicode `—` in curl JSON payloads causes 400 "Failed to read request". Use ASCII `-` instead.
