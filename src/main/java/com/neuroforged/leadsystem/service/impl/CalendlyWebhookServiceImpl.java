@@ -111,6 +111,7 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
                 .calendlyUri(p.getEvent())
                 .eventType(p.getEventType().getName())
                 .inviteeEmail(inviteeEmail)
+                .inviteeName(p.getInvitee().getName())
                 .startTime(start)
                 .endTime(end)
                 .status(MeetingStatus.SCHEDULED)
