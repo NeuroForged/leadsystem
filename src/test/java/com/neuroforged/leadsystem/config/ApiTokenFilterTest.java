@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -12,11 +13,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ApiTokenFilterTest {
+
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private ApiTokenFilter filter;
@@ -25,6 +31,7 @@ class ApiTokenFilterTest {
     void setUp() {
         ReflectionTestUtils.setField(filter, "internalToken", "valid-token-123");
         SecurityContextHolder.clearContext();
+        lenient().when(rateLimitService.tryConsume(any())).thenReturn(true);
     }
 
     @Test

@@ -53,6 +53,11 @@ neuroforged:
     from: ${SPRING_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+
+rate-limit:
+  requests-per-minute: 60
+  requests-per-hour: 500
+
 scraper:
-  api-url: ${SCRAPER_API_URL}
+  api-url: ${SCRAPER_API_URL:https://scraper.alchemizeiq.com}
   api-key: ${SCRAPER_API_KEY}

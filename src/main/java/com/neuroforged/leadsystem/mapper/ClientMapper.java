@@ -18,6 +18,8 @@ public class ClientMapper {
         dto.setPrimaryEmail(client.getPrimaryEmail());
         dto.setNotificationEmails(client.getNotificationEmails());
         dto.setWebsiteUrl(client.getWebsiteUrl());
+        dto.setCreatedAt(client.getCreatedAt());
+        dto.setUpdatedAt(client.getUpdatedAt());
         return dto;
     }
 

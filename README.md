@@ -1,6 +1,6 @@
-# NeuroForged Lead System
+# Alchemize Lead System
 
-Backend for NeuroForged's AI-powered lead capture and Calendly integration platform.
+Backend for Alchemize's AI-powered lead capture and Calendly integration platform.
 
 Each agency client gets an AI chatbot that captures leads via the API. The system routes leads, sends email notifications, and syncs Calendly meetings per client.
 
@@ -10,7 +10,7 @@ Each agency client gets an AI chatbot that captures leads via the API. The syste
 - **PostgreSQL** · JPA/Hibernate (`ddl-auto: update`)
 - **Spring Security** — dual auth: JWT for admin dashboard, `X-Api-Key` for chatbot lead submission
 - **Calendly OAuth 2.0** — per-client Calendly account connection
-- **Docker** — deployed on Render
+- **Docker** — deployed on Coolify (Hetzner CX23)
 
 ## Prerequisites
 
@@ -72,9 +72,10 @@ Obtain a JWT: `POST /auth/login` with `{"email": "...", "password": "..."}`.
 
 | Branch | Purpose |
 |--------|---------|
-| `master` | Production — Render auto-deploys on push |
-| `develop` | Development — Render dev service auto-deploys on push |
-| `claude/*` | AI agent work branches — PR into `develop` |
+| `master` | Production — Coolify auto-deploys on push → api.alchemizeiq.com |
+| `develop` | Development — Coolify dev service auto-deploys on push → api-dev.alchemizeiq.com |
+| `feature/LSB-XX-description` | Feature branches — PR into `develop` |
+| `claude/*` | AI agent worktree branches — PR into `develop` |
 
 ## Build
 

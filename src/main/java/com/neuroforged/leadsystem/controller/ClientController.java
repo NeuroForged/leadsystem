@@ -1,7 +1,10 @@
 package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.dto.ClientDto;
+import com.neuroforged.leadsystem.dto.ScrapeJobResponse;
 import com.neuroforged.leadsystem.service.ClientService;
+import com.neuroforged.leadsystem.service.ScraperService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +18,11 @@ import org.springframework.web.bind.annotation.*;
 public class ClientController {
 
     private final ClientService clientService;
+    private final ScraperService scraperService;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ClientDto> createClient(@RequestBody ClientDto clientDto) {
+    public ResponseEntity<ClientDto> createClient(@Valid @RequestBody ClientDto clientDto) {
         log.info("Controller for creating new client (Admin Only)");
         return ResponseEntity.ok(clientService.createClient(clientDto));
     }
@@ -32,8 +36,16 @@ public class ClientController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ClientDto> updateClient(@PathVariable Long id, @RequestBody ClientDto clientDto) {
+    public ResponseEntity<ClientDto> updateClient(@PathVariable Long id, @Valid @RequestBody ClientDto clientDto) {
         log.info("Controller for updating client ID: {} (Admin Only)", id);
         return ResponseEntity.ok(clientService.updateClient(id, clientDto));
+    }
+
+    @PostMapping("/{id}/scrape")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ScrapeJobResponse> triggerScrape(@PathVariable Long id) {
+        log.info("Triggering scrape for client ID: {}", id);
+        ClientDto client = clientService.getClientDtoById(id);
+        return ResponseEntity.ok(scraperService.triggerScrape(client.getWebsiteUrl(), String.valueOf(id)));
     }
 }

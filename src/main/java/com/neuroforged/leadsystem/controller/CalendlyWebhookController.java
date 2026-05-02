@@ -34,8 +34,8 @@ public class CalendlyWebhookController {
 
     @PostMapping
     public ResponseEntity<Void> handleWebhook(@RequestBody String rawBody,
+                                              @RequestHeader(value = "Calendly-Webhook-Signature", required = false) String signatureHeader,
                                               @RequestHeader Map<String, String> headers) {
-        String signatureHeader = headers.get("calendly-webhook-signature");
         if (signatureHeader == null) {
             log.warn("Rejected webhook: missing Calendly-Webhook-Signature header");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
