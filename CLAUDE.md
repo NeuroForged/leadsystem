@@ -110,6 +110,10 @@ NEUROFORGED_ADMIN_PASSWORD
 
 # CORS
 NEUROFORGED_CORS_ALLOWED_ORIGINS   # prod only — comma-separated frontend URLs
+
+# Scraper integration
+SCRAPER_API_URL                    # default: https://scraper.alchemizeiq.com
+SCRAPER_API_KEY                    # shared secret for ScraperServiceImpl
 ```
 
 ## Common conventions
