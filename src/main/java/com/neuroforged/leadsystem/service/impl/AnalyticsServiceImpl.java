@@ -25,19 +25,16 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public List<ClientSummaryDTO> getClientSummary() {
-        return clientRepository.findAll().stream().map(client -> {
-            String cid = String.valueOf(client.getId());
-            long leads = leadRepository.countFiltered(cid, null, null);
-            long meetings = meetingRepository.findByClient_Id(client.getId()).size();
-            double avgScore = leadRepository.avgLeadScore(cid, null, null);
-            double convRate = leads == 0 ? 0.0 : (double) meetings / leads;
+        return clientRepository.fetchClientSummaries().stream().map(r -> {
+            long leads = r.getTotalLeads();
+            long meetings = r.getTotalMeetings();
             return ClientSummaryDTO.builder()
-                    .clientId(client.getId())
-                    .clientName(client.getName())
+                    .clientId(r.getClientId())
+                    .clientName(r.getClientName())
                     .totalLeads(leads)
                     .totalMeetings(meetings)
-                    .conversionRate(convRate)
-                    .avgLeadScore(avgScore)
+                    .conversionRate(leads == 0 ? 0.0 : (double) meetings / leads)
+                    .avgLeadScore(r.getAvgLeadScore())
                     .build();
         }).toList();
     }
