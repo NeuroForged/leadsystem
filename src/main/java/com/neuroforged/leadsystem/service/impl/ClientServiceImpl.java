@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -53,5 +54,16 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public Optional<Client> findClientByEmail(String email) {
         return clientRepository.findByPrimaryEmail(email);
+    }
+
+    @Override
+    public List<ClientDto> getAllClients() {
+        return clientRepository.findAll().stream().map(clientMapper::toDto).toList();
+    }
+
+    @Override
+    public void deleteClient(Long id) {
+        if (!clientRepository.existsById(id)) throw new ResourceNotFoundException("Client not found: " + id);
+        clientRepository.deleteById(id);
     }
 }

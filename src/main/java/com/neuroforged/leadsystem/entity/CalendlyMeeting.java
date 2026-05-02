@@ -20,6 +20,7 @@ public class CalendlyMeeting {
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
     private String inviteeEmail;
+    private String inviteeName;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
