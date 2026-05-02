@@ -26,4 +26,6 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     Page<Lead> findByStatus(LeadStatus status, Pageable pageable);
 
     Page<Lead> findByClientIdAndStatus(String clientId, LeadStatus status, Pageable pageable);
+
+    Optional<Lead> findByEmailAndClientId(String email, String clientId);
 }

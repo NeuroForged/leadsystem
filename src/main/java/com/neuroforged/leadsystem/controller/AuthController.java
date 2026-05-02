@@ -2,18 +2,23 @@ package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.dto.AuthenticationRequest;
 import com.neuroforged.leadsystem.dto.AuthenticationResponse;
+import com.neuroforged.leadsystem.dto.ChangePasswordRequest;
 import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import com.neuroforged.leadsystem.security.JwtUtil;
+import com.neuroforged.leadsystem.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 @Slf4j
 @RestController
@@ -25,6 +30,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request) {
@@ -50,6 +56,13 @@ public class AuthController {
         }
     }
 
+
+    @PatchMapping("/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Principal principal) {
+        authService.changePassword(principal.getName(), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthenticationRequest request) {
