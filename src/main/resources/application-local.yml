@@ -58,6 +58,7 @@ neuroforged:
     from: ${SPRING_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+  seed-sample-data: false
 
 rate-limit:
   requests-per-minute: 60
