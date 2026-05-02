@@ -40,10 +40,12 @@ public class ClientServiceImpl implements ClientService {
     public ClientDto updateClient(Long clientId, ClientDto dto) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
-        client.setName(dto.getName());
-        client.setPrimaryEmail(dto.getPrimaryEmail());
-        client.setNotificationEmails(dto.getNotificationEmails());
-        client.setWebsiteUrl(dto.getWebsiteUrl());
+        if (dto.getName() != null) client.setName(dto.getName());
+        if (dto.getPrimaryEmail() != null) client.setPrimaryEmail(dto.getPrimaryEmail());
+        if (dto.getWebsiteUrl() != null) client.setWebsiteUrl(dto.getWebsiteUrl());
+        if (dto.getNotificationEmails() != null) {
+            client.setNotificationEmails(String.join(",", dto.getNotificationEmails()));
+        }
         return clientMapper.toDto(clientRepository.save(client));
     }
 
