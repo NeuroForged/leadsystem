@@ -24,6 +24,7 @@ public class ScraperServiceImpl implements ScraperService {
         this.webClient = webClientBuilder
                 .baseUrl(scraperApiUrl)
                 .defaultHeader("X-API-Key", scraperApiKey)
+                .codecs(config -> config.defaultCodecs().maxInMemorySize(20 * 1024 * 1024))
                 .build();
     }
 
@@ -48,6 +49,16 @@ public class ScraperServiceImpl implements ScraperService {
                 .uri("/api/jobs/{id}", scraperJobId)
                 .retrieve()
                 .bodyToMono(ScraperStatusResponse.class)
+                .block();
+    }
+
+    @Override
+    public byte[] downloadZip(String scraperJobId) {
+        log.info("Downloading KB zip for scraperJobId={}", scraperJobId);
+        return webClient.get()
+                .uri("/api/jobs/{id}/zip", scraperJobId)
+                .retrieve()
+                .bodyToMono(byte[].class)
                 .block();
     }
 }
