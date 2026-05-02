@@ -63,4 +63,11 @@ public class ClientController {
         ClientDto client = clientService.getClientDtoById(id);
         return ResponseEntity.ok(scraperService.triggerScrape(client.getWebsiteUrl(), String.valueOf(id)));
     }
+
+    @PatchMapping("/{id}/scrape-timestamp")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> updateScrapeTimestamp(@PathVariable Long id) {
+        clientService.updateScrapeTimestamp(id);
+        return ResponseEntity.noContent().build();
+    }
 }

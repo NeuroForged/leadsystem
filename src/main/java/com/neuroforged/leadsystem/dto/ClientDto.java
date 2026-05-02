@@ -26,4 +26,5 @@ public class ClientDto {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime lastScrapedAt;
 }
