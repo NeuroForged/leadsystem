@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.dto.LeadStatusUpdateRequest;
 import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.LeadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class LeadController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<PagedResponse<LeadResponseDTO>> getLeads(
             @RequestParam(required = false) String clientId,
             @RequestParam(required = false) LeadStatus status,
@@ -44,10 +45,11 @@ public class LeadController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
+        String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        log.info("Fetching leads — clientId={}, status={}, page={}, size={}", clientId, status, page, size);
-        return ResponseEntity.ok(leadService.getLeads(clientId, status, pageable));
+        log.info("Fetching leads — clientId={}, status={}, page={}, size={}", resolvedClientId, status, page, size);
+        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, pageable));
     }
 
     @PatchMapping("/{id}/status")
@@ -60,19 +62,22 @@ public class LeadController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<?> getLeadsByClientId(@PathVariable String clientId) {
         if (clientId == null || clientId.isBlank()) {
             throw new InvalidLeadException("Client ID must be provided.");
         }
+        AuthPrincipalUtil.assertCanAccessStringClient(clientId);
         log.info("Fetching leads for clientId: {}", clientId);
         return ResponseEntity.ok(leadService.getLeadsByClientId(clientId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<LeadResponseDTO> getLeadById(@PathVariable Long id) {
         log.info("Fetching lead by ID: {}", id);
-        return ResponseEntity.ok(leadService.getLeadById(id));
+        LeadResponseDTO lead = leadService.getLeadById(id);
+        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        return ResponseEntity.ok(lead);
     }
 }

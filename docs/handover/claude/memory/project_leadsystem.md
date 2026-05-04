@@ -31,6 +31,7 @@ originSessionId: b384e883-533b-4a22-9875-2a4b3249054c
 - PORTAL-80: KnowledgeBaseDocument entity + API — `POST /api/clients/{id}/kb/fetch` (downloads ZIP from scraper, extracts .md files), `GET /api/clients/{id}/kb`, `GET /api/clients/{id}/kb/search?q=`, `DELETE /api/clients/{id}/kb`
 - Flyway V2: `ALTER TABLE calendly_meeting ADD COLUMN IF NOT EXISTS invitee_name`; creates `scrape_job` + `scrape_preset` tables
 - Flyway V3: creates `knowledge_base_document` table + index
+- Flyway V4: adds `api_key` (UUID backfill) + `last_scraped_at` to `client` table (prod DB was missing these from pre-Flyway era)
 
 **Open PRs:** None — all merged to master.
 
@@ -38,9 +39,11 @@ originSessionId: b384e883-533b-4a22-9875-2a4b3249054c
 - LSB-22: Fireflies.ai webhook — needs external Fireflies API credentials
 - PORTAL-81: Phase 2 KB client access — blocked on PORTAL-9 (CLIENT JWT role)
 
-**Prod outage (2026-05-02, now resolved):**
-PR #20 brought Flyway (ddl-auto:validate) to master but V2 migration (invitee_name) was not included.
-Fix: PR #21 merged V2+V3 migrations to master. Coolify will auto-redeploy.
+**Prod outage (2026-05-02, RESOLVED at 15:27 UTC):**
+Multiple columns missing from prod DB after Flyway takeover. Root cause: `baseline-on-migrate` records V1 as applied without running SQL — any columns added between last `ddl-auto:update` deployment and V1 SQL creation are missing.
+- V2 fixed: `invitee_name` on `calendly_meeting`
+- V4 fixed: `api_key` + `last_scraped_at` on `client`
+Lesson: When adding Flyway to a live DB, audit ALL entity fields vs actual DB schema and add migration gaps as separate V2+ files.
 
 **Flyway notes:**
 - New schema changes need `VX__description.sql` in `src/main/resources/db/migration/`

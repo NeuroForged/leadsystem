@@ -2,6 +2,7 @@ package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.dto.ClientDto;
 import com.neuroforged.leadsystem.dto.ScrapeJobDto;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.ClientService;
 import com.neuroforged.leadsystem.service.ScrapeJobService;
 import jakarta.validation.Valid;
@@ -45,9 +46,10 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<ClientDto> getClient(@PathVariable Long id) {
-        log.info("Controller for getting client by ID (Admin Only)");
+        AuthPrincipalUtil.assertCanAccessClient(id);
+        log.info("Controller for getting client by ID");
         return ResponseEntity.ok(clientService.getClientDtoById(id));
     }
 

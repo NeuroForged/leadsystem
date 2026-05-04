@@ -50,4 +50,9 @@ Unicode em dash in `leadChallenge` or other string fields causes `400 Failed to 
 
 ---
 
+**Flyway `baseline-on-migrate` skips V1 SQL — columns added between last ddl-auto:update deploy and Flyway migration will be missing from prod.**
+When baseline is applied, Flyway records V1 as "applied" WITHOUT running the SQL. Any columns that were added to entities while `ddl-auto:update` was active but AFTER the last master deployment will not exist in prod. Fix: add a V2+ migration with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for each missing column. Always cross-check `\d tablename` on prod vs entity fields when adding Flyway to a live DB.
+
+---
+
 **Livewire `$wire.deploy()` is the reliable way to trigger a redeploy** without clicking the UI deploy button (which can expire the session). Call `window.Livewire.all().find(c => c.name === 'project.application.heading').$wire.deploy()` from the browser console.
