@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.dto.KbDocumentDto;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.KnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,9 @@ public class KnowledgeBaseController {
     private final KnowledgeBaseService knowledgeBaseService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<List<KbDocumentDto>> list(@PathVariable Long clientId) {
+        AuthPrincipalUtil.assertCanAccessClient(clientId);
         return ResponseEntity.ok(knowledgeBaseService.listByClient(clientId));
     }
 
@@ -32,10 +34,11 @@ public class KnowledgeBaseController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<List<KbDocumentDto>> search(
             @PathVariable Long clientId,
             @RequestParam String q) {
+        AuthPrincipalUtil.assertCanAccessClient(clientId);
         return ResponseEntity.ok(knowledgeBaseService.search(clientId, q));
     }
 

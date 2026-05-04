@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.dto.ScrapeJobDto;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.ScrapeJobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,15 +18,18 @@ public class ScrapeJobController {
     private final ScrapeJobService scrapeJobService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<List<ScrapeJobDto>> listByClient(@RequestParam Long clientId) {
-        return ResponseEntity.ok(scrapeJobService.listByClient(clientId));
+        return ResponseEntity.ok(scrapeJobService.listByClient(
+                AuthPrincipalUtil.resolveClientIdForCaller(clientId)));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<ScrapeJobDto> getJob(@PathVariable Long id) {
-        return ResponseEntity.ok(scrapeJobService.getJob(id));
+        ScrapeJobDto job = scrapeJobService.getJob(id);
+        AuthPrincipalUtil.assertCanAccessClient(job.getClientId());
+        return ResponseEntity.ok(job);
     }
 
     @PostMapping("/{id}/sync")
