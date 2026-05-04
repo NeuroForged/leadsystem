@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -51,14 +50,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var user = userRepository.findByEmail(email);
             if (user.isPresent() && jwtUtil.validateToken(jwt)) {
-                UserDetails userDetails = org.springframework.security.core.userdetails.User
-                        .withUsername(user.get().getEmail())
-                        .password(user.get().getPassword())
-                        .roles(user.get().getRole())
-                        .build();
+                CustomUserPrincipal principal = new CustomUserPrincipal(
+                        user.get().getEmail(),
+                        user.get().getPassword(),
+                        user.get().getRole(),
+                        user.get().getClientId()
+                );
 
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
