@@ -1,6 +1,8 @@
 package com.neuroforged.leadsystem.controller;
 
 import com.neuroforged.leadsystem.config.ApiTokenFilter;
+import com.neuroforged.leadsystem.dto.AddCommentRequest;
+import com.neuroforged.leadsystem.dto.LeadCommentDto;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.LeadStatusUpdateRequest;
@@ -8,6 +10,7 @@ import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
+import com.neuroforged.leadsystem.service.LeadCommentService;
 import com.neuroforged.leadsystem.service.LeadService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -33,6 +37,7 @@ public class LeadController {
             Set.of("createdAt", "leadScore", "email", "status", "businessName", "customerType");
 
     private final LeadService leadService;
+    private final LeadCommentService leadCommentService;
 
     @PostMapping
     @PreAuthorize("hasRole('INTERNAL')")
@@ -64,7 +69,7 @@ public class LeadController {
         String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        log.info("Fetching leads — clientId={}, status={}, page={}, size={}", resolvedClientId, status, page, size);
+        log.info("Fetching leads -- clientId={}, status={}, page={}, size={}", resolvedClientId, status, page, size);
         return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, pageable));
     }
 
@@ -95,5 +100,27 @@ public class LeadController {
         LeadResponseDTO lead = leadService.getLeadById(id);
         AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
         return ResponseEntity.ok(lead);
+    }
+
+    @GetMapping("/{id}/comments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
+    public ResponseEntity<List<LeadCommentDto>> getComments(@PathVariable Long id) {
+        LeadResponseDTO lead = leadService.getLeadById(id);
+        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        return ResponseEntity.ok(leadCommentService.getComments(id));
+    }
+
+    @PostMapping("/{id}/comments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
+    public ResponseEntity<LeadCommentDto> addComment(
+            @PathVariable Long id,
+            @Valid @RequestBody AddCommentRequest request) {
+        LeadResponseDTO lead = leadService.getLeadById(id);
+        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        String email = AuthPrincipalUtil.currentEmail();
+        String role = AuthPrincipalUtil.currentRole();
+        log.info("Adding comment to lead {} by {}", id, email);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(leadCommentService.addComment(id, request.getContent(), email, role));
     }
 }

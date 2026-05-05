@@ -3,6 +3,7 @@ package com.neuroforged.leadsystem.security;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -29,15 +32,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        log.debug("Attempting to authenticate via Bearer token");
-        final String authHeader = request.getHeader("Authorization");
+        log.debug("Attempting to authenticate via Bearer token or cookie");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String jwt = extractFromHeader(request);
+        if (jwt == null) {
+            jwt = extractFromCookie(request, "alchemize_at");
+        }
+
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String jwt = authHeader.substring(7);
         final String email;
         try {
             email = jwtUtil.extractUsername(jwt);
@@ -69,5 +75,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractFromHeader(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
+    }
+
+    private String extractFromCookie(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) return null;
+        return Arrays.stream(request.getCookies())
+                .filter(c -> name.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 }
