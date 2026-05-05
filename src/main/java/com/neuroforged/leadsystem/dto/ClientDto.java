@@ -26,6 +26,12 @@ public class ClientDto {
 
     private Integer scrapeFrequencyDays;
 
+    private String logoUrl;
+    private String accentColor;
+
+    private String webhookUrl;
+    private String webhookSecret;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime lastScrapedAt;
