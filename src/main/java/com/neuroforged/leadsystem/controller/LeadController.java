@@ -1,12 +1,15 @@
 package com.neuroforged.leadsystem.controller;
 
+import com.neuroforged.leadsystem.config.ApiTokenFilter;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.LeadStatusUpdateRequest;
 import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.LeadService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,24 +21,35 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/leads")
 @RequiredArgsConstructor
 public class LeadController {
 
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of("createdAt", "leadScore", "email", "status", "businessName", "customerType");
+
     private final LeadService leadService;
 
     @PostMapping
     @PreAuthorize("hasRole('INTERNAL')")
-    public ResponseEntity<LeadResponseDTO> createLead(@Valid @RequestBody LeadRequestDTO leadRequestDTO) {
+    public ResponseEntity<LeadResponseDTO> createLead(
+            @Valid @RequestBody LeadRequestDTO leadRequestDTO,
+            HttpServletRequest request) {
         leadRequestDTO.sanitize();
+        Long apiKeyClientId = (Long) request.getAttribute(ApiTokenFilter.API_KEY_CLIENT_ID_ATTR);
+        if (apiKeyClientId != null && !String.valueOf(apiKeyClientId).equals(leadRequestDTO.getClientId())) {
+            throw new InvalidLeadException("clientId in request does not match the authenticated API key's client.");
+        }
         log.info("Received lead creation request for email: {}", leadRequestDTO.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(leadService.createLead(leadRequestDTO));
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<PagedResponse<LeadResponseDTO>> getLeads(
             @RequestParam(required = false) String clientId,
             @RequestParam(required = false) LeadStatus status,
@@ -44,10 +58,14 @@ public class LeadController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new InvalidLeadException("Invalid sortBy field '" + sortBy + "'. Allowed: " + ALLOWED_SORT_FIELDS);
+        }
+        String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        log.info("Fetching leads — clientId={}, status={}, page={}, size={}", clientId, status, page, size);
-        return ResponseEntity.ok(leadService.getLeads(clientId, status, pageable));
+        log.info("Fetching leads — clientId={}, status={}, page={}, size={}", resolvedClientId, status, page, size);
+        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, pageable));
     }
 
     @PatchMapping("/{id}/status")
@@ -60,19 +78,22 @@ public class LeadController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<?> getLeadsByClientId(@PathVariable String clientId) {
         if (clientId == null || clientId.isBlank()) {
             throw new InvalidLeadException("Client ID must be provided.");
         }
+        AuthPrincipalUtil.assertCanAccessStringClient(clientId);
         log.info("Fetching leads for clientId: {}", clientId);
         return ResponseEntity.ok(leadService.getLeadsByClientId(clientId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<LeadResponseDTO> getLeadById(@PathVariable Long id) {
         log.info("Fetching lead by ID: {}", id);
-        return ResponseEntity.ok(leadService.getLeadById(id));
+        LeadResponseDTO lead = leadService.getLeadById(id);
+        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        return ResponseEntity.ok(lead);
     }
 }

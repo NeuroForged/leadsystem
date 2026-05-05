@@ -59,4 +59,69 @@ class JwtUtilTest {
         String token = jwtUtil.generateToken(user);
         assertThat(jwtUtil.extractUsername(token)).isEqualTo(user.getEmail());
     }
+
+    @Test
+    void generateToken_withClientId_includesClientIdClaim() {
+        User clientUser = User.builder()
+                .id(2L)
+                .email("client@test.com")
+                .password("hashed")
+                .role("CLIENT")
+                .clientId(42L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        assertThat(jwtUtil.extractClientId(token)).isEqualTo(42L);
+    }
+
+    @Test
+    void generateToken_withoutClientId_extractClientIdReturnsNull() {
+        String token = jwtUtil.generateToken(user);
+        assertThat(jwtUtil.extractClientId(token)).isNull();
+    }
+
+    @Test
+    void extractClientId_handlesNumberClaim() {
+        User clientUser = User.builder()
+                .id(3L)
+                .email("c@test.com")
+                .password("hashed")
+                .role("CLIENT")
+                .clientId(123L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        // jjwt serialises Long claims as JSON numbers, deserialised as Number
+        assertThat(jwtUtil.extractClientId(token)).isEqualTo(123L);
+    }
+
+    @Test
+    void extractRole_returnsRoleClaim() {
+        String token = jwtUtil.generateToken(user);
+        assertThat(jwtUtil.extractRole(token)).isEqualTo("ADMIN");
+    }
+
+    @Test
+    void extractRole_clientRoleReturnsClient() {
+        User clientUser = User.builder()
+                .id(2L)
+                .email("c@test.com")
+                .password("hashed")
+                .role("CLIENT")
+                .clientId(1L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        assertThat(jwtUtil.extractRole(token)).isEqualTo("CLIENT");
+    }
+
+    @Test
+    void extractRole_returnsNullWhenRoleAbsent() {
+        // Build a token that does not include the role claim
+        User noRoleUser = User.builder()
+                .id(99L)
+                .email("noRole@test.com")
+                .password("hashed")
+                .role(null)
+                .build();
+        String token = jwtUtil.generateToken(noRoleUser);
+        assertThat(jwtUtil.extractRole(token)).isNull();
+    }
 }

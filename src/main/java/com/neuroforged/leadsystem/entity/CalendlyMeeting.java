@@ -15,15 +15,21 @@ public class CalendlyMeeting {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
     private String calendlyUri;
     private String eventType;
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
     private String inviteeEmail;
+    private String inviteeName;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private MeetingStatus status = MeetingStatus.SCHEDULED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private MeetingOutcome outcome;
 
     @ManyToOne
     @JoinColumn(name = "client_id")

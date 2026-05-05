@@ -21,17 +21,33 @@ public class JwtUtil {
     }
 
     public String generateToken(User user) {
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .signWith(key, SignatureAlgorithm.HS256);
+        if (user.getClientId() != null) {
+            builder.claim("clientId", user.getClientId());
+        }
+        return builder.compact();
     }
 
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
+    }
+
+    public String extractRole(String token) {
+        Object role = getClaims(token).get("role");
+        return role == null ? null : role.toString();
+    }
+
+    public Long extractClientId(String token) {
+        Object claim = getClaims(token).get("clientId");
+        if (claim == null) {
+            return null;
+        }
+        return claim instanceof Number n ? n.longValue() : Long.valueOf(claim.toString());
     }
 
     public boolean validateToken(String token) {

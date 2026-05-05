@@ -7,11 +7,16 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
 
   mail:
     host: ${SPRING_MAIL_HOST}
@@ -36,10 +41,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
       show-details: when-authorized
+    prometheus:
+      enabled: true
 
 neuroforged:
   admin:
@@ -53,6 +60,8 @@ neuroforged:
     from: ${NEUROFORGED_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+  encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
+  seed-sample-data: ${NEUROFORGED_SEED_SAMPLE_DATA:false}
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM:60}
