@@ -43,6 +43,7 @@ public class Client {
     @Column(length = 200)
     private String webhookSecret;
 
+
     @PrePersist
     private void generateApiKey() {
         if (apiKey == null) {
