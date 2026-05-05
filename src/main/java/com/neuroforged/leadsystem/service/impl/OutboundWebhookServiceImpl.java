@@ -1,5 +1,7 @@
 package com.neuroforged.leadsystem.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
@@ -14,6 +16,8 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -21,6 +25,7 @@ import java.util.HexFormat;
 public class OutboundWebhookServiceImpl implements OutboundWebhookService {
 
     private final WebClient.Builder webClientBuilder;
+    private final ObjectMapper objectMapper;
 
     @Async
     @Override
@@ -31,6 +36,10 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
         }
 
         String payload = buildPayload(lead);
+        if (payload == null) {
+            log.warn("Webhook skipped for lead {} — payload serialization failed", lead.getId());
+            return;
+        }
 
         WebClient webClient = webClientBuilder.build();
 
@@ -59,18 +68,20 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
     }
 
     private String buildPayload(Lead lead) {
-        return "{\"leadId\":" + lead.getId()
-                + ",\"email\":\"" + lead.getEmail() + "\""
-                + ",\"name\":\"" + nullSafe(lead.getFirstName()) + "\""
-                + ",\"phone\":null"
-                + ",\"clientId\":\"" + lead.getClientId() + "\""
-                + ",\"createdAt\":\"" + lead.getCreatedAt() + "\""
-                + ",\"status\":\"" + lead.getStatus() + "\""
-                + "}";
-    }
-
-    private String nullSafe(String value) {
-        return value == null ? "" : value;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("leadId", lead.getId());
+        payload.put("email", lead.getEmail());
+        payload.put("name", lead.getFirstName() == null ? "" : lead.getFirstName());
+        payload.put("phone", null);
+        payload.put("clientId", lead.getClientId());
+        payload.put("createdAt", lead.getCreatedAt() == null ? null : lead.getCreatedAt().toString());
+        payload.put("status", lead.getStatus() == null ? null : lead.getStatus().toString());
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize webhook payload for lead {}", lead.getId(), e);
+            return null;
+        }
     }
 
     private String hmacSha256(String data, String secret) {

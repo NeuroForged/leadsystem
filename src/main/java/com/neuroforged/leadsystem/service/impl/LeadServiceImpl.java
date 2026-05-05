@@ -91,7 +91,7 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponseDTO getLeadById(Long id) {
         return leadRepository.findById(id)
                 .map(leadMapper::toDto)
-                .orElseThrow(() -> new InvalidLeadException("Lead not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Lead not found with ID: " + id));
     }
 
     private void validateLeadRequest(LeadRequestDTO dto) {
