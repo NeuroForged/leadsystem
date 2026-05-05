@@ -15,6 +15,7 @@ public class CalendlyMeeting {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
     private String calendlyUri;
     private String eventType;
     private ZonedDateTime startTime;
