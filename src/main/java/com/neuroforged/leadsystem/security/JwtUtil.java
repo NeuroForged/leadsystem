@@ -13,6 +13,7 @@ import java.util.Date;
 public class JwtUtil {
 
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 24; // 24 hours
+    private final long REFRESH_EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 7; // 7 days
 
     private final Key key;
 
@@ -31,6 +32,28 @@ public class JwtUtil {
             builder.claim("clientId", user.getClientId());
         }
         return builder.compact();
+    }
+
+    public String generateRefreshToken(User user) {
+        JwtBuilder builder = Jwts.builder()
+                .setSubject(user.getEmail())
+                .claim("role", user.getRole())
+                .claim("type", "refresh")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_TIME))
+                .signWith(key, SignatureAlgorithm.HS256);
+        if (user.getClientId() != null) {
+            builder.claim("clientId", user.getClientId());
+        }
+        return builder.compact();
+    }
+
+    public long getAccessTokenMaxAge() {
+        return EXPIRATION_TIME / 1000;
+    }
+
+    public long getRefreshTokenMaxAge() {
+        return REFRESH_EXPIRATION_TIME / 1000;
     }
 
     public String extractUsername(String token) {
