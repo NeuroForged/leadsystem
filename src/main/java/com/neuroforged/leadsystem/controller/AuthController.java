@@ -8,6 +8,7 @@ import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import com.neuroforged.leadsystem.security.CustomUserPrincipal;
 import com.neuroforged.leadsystem.security.JwtUtil;
+import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -145,23 +146,24 @@ public class AuthController {
     }
 
     private void addCookie(HttpServletResponse response, String name, String value, int maxAge, boolean secure) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAge);
-        cookie.setSecure(secure);
-        cookie.setAttribute("SameSite", "Lax");
-        response.addCookie(cookie);
+        response.addHeader("Set-Cookie", buildSetCookieHeader(name, value, maxAge, secure));
     }
 
     private void clearCookie(HttpServletResponse response, String name, boolean secure) {
-        Cookie cookie = new Cookie(name, "");
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        cookie.setSecure(secure);
-        cookie.setAttribute("SameSite", "Lax");
-        response.addCookie(cookie);
+        response.addHeader("Set-Cookie", buildSetCookieHeader(name, "", 0, secure));
+    }
+
+    private String buildSetCookieHeader(String name, String value, int maxAge, boolean secure) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append("=").append(value)
+                .append("; Path=/")
+                .append("; HttpOnly")
+                .append("; SameSite=Lax")
+                .append("; Max-Age=").append(maxAge);
+        if (secure) {
+            sb.append("; Secure");
+        }
+        return sb.toString();
     }
 
     private String extractCookie(HttpServletRequest request, String name) {
