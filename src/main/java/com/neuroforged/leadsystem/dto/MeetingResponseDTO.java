@@ -21,6 +21,7 @@ public class MeetingResponseDTO {
     private String inviteeEmail;
     private String inviteeName;
     private String status;
+    private String outcome;
     private Long clientId;
     private String clientName;
     private Long leadId;

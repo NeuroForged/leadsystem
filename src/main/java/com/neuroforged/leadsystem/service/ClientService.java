@@ -15,4 +15,5 @@ public interface ClientService {
     List<ClientDto> getAllClients();
     void deleteClient(Long id);
     void updateScrapeTimestamp(Long id);
+    ClientDto rotateApiKey(Long id);
 }

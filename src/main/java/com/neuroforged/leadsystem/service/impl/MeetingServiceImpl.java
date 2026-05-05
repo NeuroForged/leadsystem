@@ -3,6 +3,7 @@ package com.neuroforged.leadsystem.service.impl;
 import com.neuroforged.leadsystem.dto.MeetingResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.entity.CalendlyMeeting;
+import com.neuroforged.leadsystem.entity.MeetingOutcome;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
 import com.neuroforged.leadsystem.repository.CalendlyMeetingRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
@@ -68,6 +69,14 @@ public class MeetingServiceImpl implements MeetingService {
         return toDto(meeting);
     }
 
+    @Override
+    public MeetingResponseDTO updateOutcome(Long id, MeetingOutcome outcome) {
+        CalendlyMeeting meeting = meetingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Meeting not found: " + id));
+        meeting.setOutcome(outcome);
+        return toDto(meetingRepository.save(meeting));
+    }
+
     private MeetingResponseDTO toDto(CalendlyMeeting m) {
         Long leadId = null;
         if (m.getInviteeEmail() != null && m.getClient() != null) {
@@ -85,6 +94,7 @@ public class MeetingServiceImpl implements MeetingService {
                 .inviteeEmail(m.getInviteeEmail())
                 .inviteeName(m.getInviteeName())
                 .status(m.getStatus() != null ? m.getStatus().name() : null)
+                .outcome(m.getOutcome() != null ? m.getOutcome().name() : null)
                 .clientId(m.getClient() != null ? m.getClient().getId() : null)
                 .clientName(m.getClient() != null ? m.getClient().getName() : null)
                 .leadId(leadId)

@@ -24,6 +24,8 @@ public class ClientDto {
 
     private boolean calendlyConnected;
 
+    private Integer scrapeFrequencyDays;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime lastScrapedAt;

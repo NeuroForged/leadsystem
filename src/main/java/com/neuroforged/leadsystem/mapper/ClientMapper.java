@@ -34,6 +34,7 @@ public class ClientMapper {
         dto.setCreatedAt(client.getCreatedAt());
         dto.setUpdatedAt(client.getUpdatedAt());
         dto.setLastScrapedAt(client.getLastScrapedAt());
+        dto.setScrapeFrequencyDays(client.getScrapeFrequencyDays());
 
         String emails = client.getNotificationEmails();
         dto.setNotificationEmails(emails == null || emails.isBlank()

@@ -3,7 +3,10 @@ package com.neuroforged.leadsystem.repository;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.repository.projection.ClientSummaryRow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +15,11 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     Optional<Client> findByPrimaryEmail(String email);
 
     Optional<Client> findByApiKey(String apiKey);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Client c SET c.apiKey = :apiKey WHERE c.id = :id")
+    void updateApiKey(@Param("id") Long id, @Param("apiKey") String apiKey);
 
     @Query(value = """
             SELECT

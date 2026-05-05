@@ -32,6 +32,8 @@ public class Client {
 
     private LocalDateTime lastScrapedAt;
 
+    private Integer scrapeFrequencyDays;
+
     @PrePersist
     private void generateApiKey() {
         if (apiKey == null) {

@@ -77,4 +77,11 @@ public class ClientController {
         clientService.updateScrapeTimestamp(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/rotate-key")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDto> rotateApiKey(@PathVariable Long id) {
+        log.info("Rotating API key for client id={}", id);
+        return ResponseEntity.ok(clientService.rotateApiKey(id));
+    }
 }

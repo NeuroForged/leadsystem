@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +50,9 @@ public class ClientServiceImpl implements ClientService {
         if (dto.getWebsiteUrl() != null) client.setWebsiteUrl(dto.getWebsiteUrl());
         if (dto.getNotificationEmails() != null) {
             client.setNotificationEmails(String.join(",", dto.getNotificationEmails()));
+        }
+        if (dto.getScrapeFrequencyDays() != null) {
+            client.setScrapeFrequencyDays(dto.getScrapeFrequencyDays());
         }
         return clientMapper.toDto(clientRepository.save(client));
     }
@@ -86,5 +90,14 @@ public class ClientServiceImpl implements ClientService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found: " + id));
         client.setLastScrapedAt(LocalDateTime.now());
         clientRepository.save(client);
+    }
+
+    @Override
+    public ClientDto rotateApiKey(Long id) {
+        if (!clientRepository.existsById(id)) throw new ResourceNotFoundException("Client not found: " + id);
+        String newKey = UUID.randomUUID().toString().replace("-", "");
+        clientRepository.updateApiKey(id, newKey);
+        log.info("API key rotated for client id={}", id);
+        return clientMapper.toDto(clientRepository.findById(id).orElseThrow());
     }
 }
