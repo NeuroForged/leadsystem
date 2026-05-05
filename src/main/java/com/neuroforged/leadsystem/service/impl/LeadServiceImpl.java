@@ -13,6 +13,7 @@ import com.neuroforged.leadsystem.mapper.LeadMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
 import com.neuroforged.leadsystem.repository.spec.LeadFilterSpec;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.LeadNotificationService;
 import com.neuroforged.leadsystem.service.LeadService;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
@@ -36,6 +37,7 @@ public class LeadServiceImpl implements LeadService {
     private final LeadMapper leadMapper;
     private final ClientRepository clientRepository;
     private final OutboundWebhookService outboundWebhookService;
+    private final LeadSystemMetrics metrics;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -50,6 +52,7 @@ public class LeadServiceImpl implements LeadService {
         Lead lead = buildLeadEntity(dto);
         Lead savedLead = leadRepository.save(lead);
 
+        metrics.recordLeadReceived(savedLead.getClientId());
         leadNotificationService.notifyNewLead(savedLead);
 
         try {

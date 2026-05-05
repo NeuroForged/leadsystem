@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.scheduler;
 
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.CalendlyPollingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,10 +13,12 @@ import org.springframework.stereotype.Component;
 public class CalendlyPollingScheduler {
 
     private final CalendlyPollingService pollingService;
+    private final LeadSystemMetrics metrics;
 
     @Scheduled(fixedDelayString = "${calendly.polling-interval-ms:900000}")
     public void pollCalendlyAccounts() {
         log.info("Running Calendly polling cycle for accounts without webhooks...");
+        metrics.recordSchedulerRun("calendly-polling");
         pollingService.pollAllAccounts();
     }
 }

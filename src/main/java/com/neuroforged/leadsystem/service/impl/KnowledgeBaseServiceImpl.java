@@ -10,6 +10,7 @@ import com.neuroforged.leadsystem.mapper.KbDocumentMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.KnowledgeBaseDocumentRepository;
 import com.neuroforged.leadsystem.repository.ScrapeJobRepository;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.KbFetchStatusStore;
 import com.neuroforged.leadsystem.service.KnowledgeBaseService;
 import com.neuroforged.leadsystem.service.ScraperService;
@@ -38,56 +39,64 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final ScraperService scraperService;
     private final KbDocumentMapper kbDocumentMapper;
     private final KbFetchStatusStore statusStore;
+    private final LeadSystemMetrics metrics;
 
     @Override
     @Transactional
     public List<KbDocumentDto> fetchAndStore(Long clientId) {
-        var client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found: " + clientId));
+        io.micrometer.core.instrument.Timer.Sample sample = metrics.startKbFetchTimer();
+        boolean success = false;
+        try {
+            var client = clientRepository.findById(clientId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Client not found: " + clientId));
 
-        ScrapeJob latestJob = scrapeJobRepository
-                .findByClientIdOrderByCreatedAtDesc(clientId)
-                .stream()
-                .filter(j -> j.getStatus() == ScrapeJobStatus.DONE && j.getScraperJobId() != null)
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No completed scrape job found for client " + clientId));
+            ScrapeJob latestJob = scrapeJobRepository
+                    .findByClientIdOrderByCreatedAtDesc(clientId)
+                    .stream()
+                    .filter(j -> j.getStatus() == ScrapeJobStatus.DONE && j.getScraperJobId() != null)
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "No completed scrape job found for client " + clientId));
 
-        byte[] zipBytes = scraperService.downloadZip(latestJob.getScraperJobId());
-        if (zipBytes == null || zipBytes.length == 0) {
-            throw new ResourceNotFoundException("Scraper returned empty ZIP for job " + latestJob.getScraperJobId());
-        }
-
-        kbRepository.deleteByClientId(clientId);
-
-        List<KnowledgeBaseDocument> docs = new ArrayList<>();
-        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                String name = entry.getName();
-                if (name.endsWith(".md")) {
-                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
-                    int wordCount = content.isBlank() ? 0
-                            : Arrays.stream(content.trim().split("\\s+")).mapToInt(w -> 1).sum();
-
-                    docs.add(KnowledgeBaseDocument.builder()
-                            .client(client)
-                            .scrapeJob(latestJob)
-                            .filename(name)
-                            .content(content)
-                            .wordCount(wordCount)
-                            .build());
-                }
-                zis.closeEntry();
+            byte[] zipBytes = scraperService.downloadZip(latestJob.getScraperJobId());
+            if (zipBytes == null || zipBytes.length == 0) {
+                throw new ResourceNotFoundException("Scraper returned empty ZIP for job " + latestJob.getScraperJobId());
             }
-        } catch (Exception e) {
-            log.error("Failed to extract KB zip for client {}: {}", clientId, e.getMessage());
-            throw new RuntimeException("Failed to extract KB zip: " + e.getMessage(), e);
-        }
 
-        kbRepository.saveAll(docs);
-        log.info("Stored {} KB documents for clientId={}", docs.size(), clientId);
-        return docs.stream().map(kbDocumentMapper::toDto).toList();
+            kbRepository.deleteByClientId(clientId);
+
+            List<KnowledgeBaseDocument> docs = new ArrayList<>();
+            try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    String name = entry.getName();
+                    if (name.endsWith(".md")) {
+                        String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                        int wordCount = content.isBlank() ? 0
+                                : Arrays.stream(content.trim().split("\\s+")).mapToInt(w -> 1).sum();
+
+                        docs.add(KnowledgeBaseDocument.builder()
+                                .client(client)
+                                .scrapeJob(latestJob)
+                                .filename(name)
+                                .content(content)
+                                .wordCount(wordCount)
+                                .build());
+                    }
+                    zis.closeEntry();
+                }
+            } catch (Exception e) {
+                log.error("Failed to extract KB zip for client {}: {}", clientId, e.getMessage());
+                throw new RuntimeException("Failed to extract KB zip: " + e.getMessage(), e);
+            }
+
+            kbRepository.saveAll(docs);
+            log.info("Stored {} KB documents for clientId={}", docs.size(), clientId);
+            success = true;
+            return docs.stream().map(kbDocumentMapper::toDto).toList();
+        } finally {
+            metrics.stopKbFetchTimer(sample, String.valueOf(clientId), success);
+        }
     }
 
     @Async
