@@ -82,6 +82,11 @@ public class JwtUtil {
         }
     }
 
+    public String extractTokenType(String token) {
+        Object type = getClaims(token).get("type");
+        return type == null ? "access" : type.toString();
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)

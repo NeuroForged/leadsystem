@@ -54,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var user = userRepository.findByEmail(email);
-            if (user.isPresent() && jwtUtil.validateToken(jwt)) {
+            if (user.isPresent() && jwtUtil.validateToken(jwt) && !"refresh".equals(jwtUtil.extractTokenType(jwt))) {
                 CustomUserPrincipal principal = new CustomUserPrincipal(
                         user.get().getEmail(),
                         user.get().getPassword(),

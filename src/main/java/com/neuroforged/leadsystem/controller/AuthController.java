@@ -79,11 +79,17 @@ public class AuthController {
             return ResponseEntity.status(401).body("Missing or invalid refresh token");
         }
 
+        String tokenType;
         String email;
         try {
+            tokenType = jwtUtil.extractTokenType(refreshToken);
             email = jwtUtil.extractUsername(refreshToken);
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Invalid refresh token");
+        }
+
+        if (!"refresh".equals(tokenType)) {
+            return ResponseEntity.status(401).body("Invalid token type");
         }
 
         User user = userRepository.findByEmail(email).orElse(null);
