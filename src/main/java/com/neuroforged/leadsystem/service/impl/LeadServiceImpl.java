@@ -3,26 +3,22 @@ package com.neuroforged.leadsystem.service.impl;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
-import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
-import com.neuroforged.leadsystem.exception.EmailSendException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
-import com.neuroforged.leadsystem.repository.ClientRepository;
+import com.neuroforged.leadsystem.mapper.LeadMapper;
+import com.neuroforged.leadsystem.repository.spec.LeadFilterSpec;
 import com.neuroforged.leadsystem.repository.LeadRepository;
-import com.neuroforged.leadsystem.service.EmailService;
+import com.neuroforged.leadsystem.service.LeadNotificationService;
 import com.neuroforged.leadsystem.service.LeadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,11 +28,8 @@ import java.util.stream.Collectors;
 public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
-    private final ClientRepository clientRepository;
-    private final EmailService emailService;
-
-    @Value("${neuroforged.admin.email}")
-    private String fallbackEmail;
+    private final LeadNotificationService leadNotificationService;
+    private final LeadMapper leadMapper;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -51,24 +44,16 @@ public class LeadServiceImpl implements LeadService {
         Lead lead = buildLeadEntity(dto);
         Lead savedLead = leadRepository.save(lead);
 
-        sendNotificationEmails(savedLead);
+        leadNotificationService.notifyNewLead(savedLead);
 
-        return mapToDTO(savedLead);
+        return leadMapper.toDto(savedLead);
     }
 
     @Override
     public PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, Pageable pageable) {
-        Page<Lead> page;
-        if (clientId != null && !clientId.isBlank() && status != null) {
-            page = leadRepository.findByClientIdAndStatus(clientId, status, pageable);
-        } else if (clientId != null && !clientId.isBlank()) {
-            page = leadRepository.findByClientId(clientId, pageable);
-        } else if (status != null) {
-            page = leadRepository.findByStatus(status, pageable);
-        } else {
-            page = leadRepository.findAll(pageable);
-        }
-        return PagedResponse.from(page.map(this::mapToDTO));
+        var spec = LeadFilterSpec.withClientId(clientId)
+                .and(LeadFilterSpec.withStatus(status));
+        return PagedResponse.from(leadRepository.findAll(spec, pageable).map(leadMapper::toDto));
     }
 
     @Override
@@ -76,7 +61,7 @@ public class LeadServiceImpl implements LeadService {
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lead not found with ID: " + id));
         lead.setStatus(status);
-        return mapToDTO(leadRepository.save(lead));
+        return leadMapper.toDto(leadRepository.save(lead));
     }
 
     public List<LeadResponseDTO> getLeadsByClientId(String clientId) {
@@ -85,13 +70,13 @@ public class LeadServiceImpl implements LeadService {
         }
 
         return leadRepository.findByClientId(clientId).stream()
-                .map(this::mapToDTO)
+                .map(leadMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public LeadResponseDTO getLeadById(Long id) {
         return leadRepository.findById(id)
-                .map(this::mapToDTO)
+                .map(leadMapper::toDto)
                 .orElseThrow(() -> new InvalidLeadException("Lead not found with ID: " + id));
     }
 
@@ -124,65 +109,5 @@ public class LeadServiceImpl implements LeadService {
                 .build();
     }
 
-    private void sendNotificationEmails(Lead lead) {
-        String subject = "New Lead Received - " + lead.getEmail() + " - " + lead.getLeadScore() + "/100";
-        String body = STR."""
-            Email: \{lead.getEmail()}
-            Customer Type: \{lead.getCustomerType()}
-            Business Name: \{lead.getBusinessName()}
-            Business Type: \{lead.getBusinessType()}
-            Monthly Leads: \{lead.getMonthlyLeads()}
-            Traffic Source: \{lead.getTrafficSource()}
-            Conversion Rate: \{lead.getConversionRate()}
-            Cost Per Lead: \{lead.getCostPerLead()}
-            Client Value: \{lead.getClientValue()}
-            Lead Challenge: \{lead.getLeadChallenge()}
-            Client ID: \{lead.getClientId()}
-            Created At: \{lead.getCreatedAt()}
-            """;
 
-        String[] recipients = resolveRecipients(lead.getClientId());
-
-        try {
-            emailService.sendLeadToMultiple(recipients, subject, body);
-        } catch (EmailSendException e) {
-            log.warn("Failed to send notification email: {}", e.getMessage(), e);
-        }
-    }
-
-    private String[] resolveRecipients(String clientId) {
-        try {
-            Long id = Long.parseLong(clientId);
-            return clientRepository.findById(id)
-                    .map(Client::getNotificationEmails)
-                    .filter(emails -> emails != null && !emails.isBlank())
-                    .map(emails -> Arrays.stream(emails.split(","))
-                            .map(String::trim)
-                            .filter(e -> !e.isBlank())
-                            .toArray(String[]::new))
-                    .orElse(new String[]{fallbackEmail});
-        } catch (NumberFormatException e) {
-            log.warn("Could not parse clientId '{}' as Long, falling back to admin email", clientId);
-            return new String[]{fallbackEmail};
-        }
-    }
-
-    private LeadResponseDTO mapToDTO(Lead lead) {
-        LeadResponseDTO dto = new LeadResponseDTO();
-        dto.setId(lead.getId());
-        dto.setEmail(lead.getEmail());
-        dto.setBusinessName(lead.getBusinessName());
-        dto.setBusinessType(lead.getBusinessType());
-        dto.setTrafficSource(lead.getTrafficSource());
-        dto.setMonthlyLeads(lead.getMonthlyLeads());
-        dto.setConversionRate(lead.getConversionRate());
-        dto.setCostPerLead(lead.getCostPerLead());
-        dto.setClientValue(lead.getClientValue());
-        dto.setLeadScore(lead.getLeadScore());
-        dto.setLeadChallenge(lead.getLeadChallenge());
-        dto.setClientId(lead.getClientId());
-        dto.setStatus(lead.getStatus());
-        dto.setCreatedAt(lead.getCreatedAt());
-        return dto;
-    }
 }

@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.ScrapeJob;
 import com.neuroforged.leadsystem.entity.ScrapeJobStatus;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
+import com.neuroforged.leadsystem.mapper.ScrapeJobMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.ScrapeJobRepository;
 import com.neuroforged.leadsystem.service.ScrapeJobService;
@@ -27,6 +28,7 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     private final ScrapeJobRepository scrapeJobRepository;
     private final ClientRepository clientRepository;
     private final ScraperService scraperService;
+    private final ScrapeJobMapper scrapeJobMapper;
 
     @Override
     @Transactional
@@ -48,7 +50,7 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
                 .reused(scraperResponse.isReused())
                 .build();
 
-        return toDto(scrapeJobRepository.save(job));
+        return scrapeJobMapper.toDto(scrapeJobRepository.save(job));
     }
 
     @Override
@@ -60,13 +62,13 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
         if (job.getStatus() == ScrapeJobStatus.PENDING || job.getStatus() == ScrapeJobStatus.RUNNING) {
             return syncStatus(id);
         }
-        return toDto(job);
+        return scrapeJobMapper.toDto(job);
     }
 
     @Override
     public List<ScrapeJobDto> listByClient(Long clientId) {
         return scrapeJobRepository.findByClientIdOrderByCreatedAtDesc(clientId)
-                .stream().map(this::toDto).collect(Collectors.toList());
+                .stream().map(scrapeJobMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -76,7 +78,7 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
                 .orElseThrow(() -> new ResourceNotFoundException("ScrapeJob not found: " + id));
 
         if (job.getScraperJobId() == null) {
-            return toDto(job);
+            return scrapeJobMapper.toDto(job);
         }
 
         try {
@@ -86,7 +88,7 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
         } catch (Exception e) {
             log.warn("Failed to sync scrape job {} from scraper: {}", id, e.getMessage());
         }
-        return toDto(job);
+        return scrapeJobMapper.toDto(job);
     }
 
     private void applyRemoteStatus(ScrapeJob job, ScraperStatusResponse remote) {
@@ -118,22 +120,5 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
         };
     }
 
-    private ScrapeJobDto toDto(ScrapeJob job) {
-        return ScrapeJobDto.builder()
-                .id(job.getId())
-                .clientId(job.getClient() != null ? job.getClient().getId() : null)
-                .scraperJobId(job.getScraperJobId())
-                .status(job.getStatus())
-                .url(job.getUrl())
-                .maxPages(job.getMaxPages())
-                .initiatedBy(job.getInitiatedBy())
-                .createdAt(job.getCreatedAt())
-                .finishedAt(job.getFinishedAt())
-                .scrapedCount(job.getScrapedCount())
-                .errorCount(job.getErrorCount())
-                .files(job.getFiles())
-                .errorMessage(job.getErrorMessage())
-                .reused(job.isReused())
-                .build();
-    }
 }
+
