@@ -1,9 +1,11 @@
 package com.neuroforged.leadsystem.controller;
 
+import com.neuroforged.leadsystem.dto.MeetingOutcomeRequest;
 import com.neuroforged.leadsystem.dto.MeetingResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
 import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.MeetingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -37,5 +39,14 @@ public class MeetingController {
         MeetingResponseDTO meeting = meetingService.getMeeting(id);
         AuthPrincipalUtil.assertCanAccessClient(meeting.getClientId());
         return ResponseEntity.ok(meeting);
+    }
+
+    @PatchMapping("/{id}/outcome")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MeetingResponseDTO> updateOutcome(
+            @PathVariable Long id,
+            @Valid @RequestBody MeetingOutcomeRequest request) {
+        log.info("Updating outcome for meeting id={} to {}", id, request.getOutcome());
+        return ResponseEntity.ok(meetingService.updateOutcome(id, request.getOutcome()));
     }
 }

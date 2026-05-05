@@ -27,6 +27,10 @@ public class CalendlyMeeting {
     @Builder.Default
     private MeetingStatus status = MeetingStatus.SCHEDULED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private MeetingOutcome outcome;
+
     @ManyToOne
     @JoinColumn(name = "client_id")
     private Client client;
