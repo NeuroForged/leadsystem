@@ -60,6 +60,7 @@ neuroforged:
     from: ${NEUROFORGED_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+  encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: ${NEUROFORGED_SEED_SAMPLE_DATA:false}
 
 rate-limit:

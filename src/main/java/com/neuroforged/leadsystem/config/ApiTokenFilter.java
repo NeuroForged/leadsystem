@@ -37,7 +37,7 @@ public class ApiTokenFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String apiKey = request.getHeader("X-Api-Key");
 
-        if (path.startsWith("/api/leads") && apiKey != null) {
+        if ((path.startsWith("/api/leads") || path.startsWith("/api/v1/leads")) && apiKey != null) {
             Long resolvedClientId = null;
 
             if (apiKey.equals(internalToken)) {
