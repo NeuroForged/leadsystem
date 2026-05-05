@@ -102,13 +102,20 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
 
     private void handleCreated(CalendlyWebhookPayload payload) {
         CalendlyWebhookPayload.Payload p = payload.getPayload();
+        String uri = p.getEvent();
+
+        if (calendlyMeetingRepository.findByCalendlyUri(uri).isPresent()) {
+            log.info("Idempotent skip — meeting already exists for uri={}", uri);
+            return;
+        }
+
         String inviteeEmail = p.getInvitee().getEmail();
         ZonedDateTime start = ZonedDateTime.parse(p.getScheduledEvent().getStartTime());
         ZonedDateTime end = ZonedDateTime.parse(p.getScheduledEvent().getEndTime());
         Optional<Client> client = clientRepository.findByPrimaryEmail(inviteeEmail);
 
         CalendlyMeeting meeting = CalendlyMeeting.builder()
-                .calendlyUri(p.getEvent())
+                .calendlyUri(uri)
                 .eventType(p.getEventType().getName())
                 .inviteeEmail(inviteeEmail)
                 .inviteeName(p.getInvitee().getName())

@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.config;
 
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,10 +23,13 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class ApiTokenFilter extends OncePerRequestFilter {
 
+    public static final String API_KEY_CLIENT_ID_ATTR = "apiKeyClientId";
+
     @Value("${neuroforged.tokens.internal}")
     private String internalToken;
 
     private final RateLimitService rateLimitService;
+    private final ClientRepository clientRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -33,7 +37,24 @@ public class ApiTokenFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String apiKey = request.getHeader("X-Api-Key");
 
-        if (path.startsWith("/api/leads") && apiKey != null && apiKey.equals(internalToken)) {
+        if (path.startsWith("/api/leads") && apiKey != null) {
+            Long resolvedClientId = null;
+
+            if (apiKey.equals(internalToken)) {
+                // Global shared token — no client scoping
+                log.debug("Authenticated via global internal token for path: {}", path);
+            } else {
+                // Try per-client API key
+                var client = clientRepository.findByApiKey(apiKey);
+                if (client.isPresent()) {
+                    resolvedClientId = client.get().getId();
+                    log.debug("Authenticated via client API key for clientId={}, path={}", resolvedClientId, path);
+                } else {
+                    chain.doFilter(request, response);
+                    return;
+                }
+            }
+
             if (!rateLimitService.tryConsume(apiKey)) {
                 log.warn("Rate limit exceeded for API key on path: {}", path);
                 long retryAfter = rateLimitService.getSecondsUntilRefill(apiKey);
@@ -44,6 +65,10 @@ public class ApiTokenFilter extends OncePerRequestFilter {
                 return;
             }
 
+            if (resolvedClientId != null) {
+                request.setAttribute(API_KEY_CLIENT_ID_ATTR, resolvedClientId);
+            }
+
             UserDetails userDetails = User.withUsername("internal-bot")
                     .password("")
                     .roles("INTERNAL")
@@ -52,7 +77,6 @@ public class ApiTokenFilter extends OncePerRequestFilter {
                     userDetails, null, userDetails.getAuthorities());
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("Authenticated via X-Api-Key for path: {}", path);
         }
         chain.doFilter(request, response);
     }
