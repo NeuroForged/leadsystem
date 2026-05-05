@@ -34,6 +34,15 @@ public class Client {
 
     private Integer scrapeFrequencyDays;
 
+    private String logoUrl;
+    private String accentColor;
+
+    @Column(length = 500)
+    private String webhookUrl;
+
+    @Column(length = 200)
+    private String webhookSecret;
+
     @PrePersist
     private void generateApiKey() {
         if (apiKey == null) {

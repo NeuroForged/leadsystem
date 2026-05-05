@@ -3,16 +3,19 @@ package com.neuroforged.leadsystem.service.impl;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
 import com.neuroforged.leadsystem.mapper.LeadMapper;
-import com.neuroforged.leadsystem.repository.spec.LeadFilterSpec;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
+import com.neuroforged.leadsystem.repository.spec.LeadFilterSpec;
 import com.neuroforged.leadsystem.service.LeadNotificationService;
 import com.neuroforged.leadsystem.service.LeadService;
+import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,6 +34,8 @@ public class LeadServiceImpl implements LeadService {
     private final LeadRepository leadRepository;
     private final LeadNotificationService leadNotificationService;
     private final LeadMapper leadMapper;
+    private final ClientRepository clientRepository;
+    private final OutboundWebhookService outboundWebhookService;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -45,6 +51,14 @@ public class LeadServiceImpl implements LeadService {
         Lead savedLead = leadRepository.save(lead);
 
         leadNotificationService.notifyNewLead(savedLead);
+
+        try {
+            Long clientLongId = Long.parseLong(savedLead.getClientId());
+            Optional<Client> clientOpt = clientRepository.findById(clientLongId);
+            clientOpt.ifPresent(client -> outboundWebhookService.notifyWebhook(savedLead, client));
+        } catch (Exception e) {
+            log.warn("Outbound webhook skipped for lead {} - client lookup failed: {}", savedLead.getId(), e.getMessage());
+        }
 
         return leadMapper.toDto(savedLead);
     }
@@ -108,6 +122,4 @@ public class LeadServiceImpl implements LeadService {
                 .createdAt(LocalDateTime.now())
                 .build();
     }
-
-
 }
