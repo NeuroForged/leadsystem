@@ -3,10 +3,10 @@ package com.neuroforged.leadsystem.client;
 import com.neuroforged.leadsystem.dto.CalendlyTokenResponse;
 import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
 import com.neuroforged.leadsystem.dto.CalendlyEventInviteesResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -18,10 +18,16 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class CalendlyApiClientImpl implements CalendlyApiClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public CalendlyApiClientImpl() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(30_000);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     @Value("${calendly.client-id}")
     private String clientId;
@@ -38,12 +44,7 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
 
     @Override
     public String exchangeAuthCodeForTokens(String state) {
-        log.info("CalendlyApiClient.exchangeAuthCodeForTokens");
-        // Generate authorization URL to redirect user to Calendly
-        log.info("Auth Url: AUTH_URL + \"?response_type=code\"\n" +
-                "                + \"&client_id=\" + clientId\n" +
-                "                + \"&redirect_uri=\" + redirectUri\n" +
-                "                + \"&state=\" + state;");
+        log.debug("Building Calendly OAuth authorization URL");
         return AUTH_URL + "?response_type=code"
                 + "&client_id=" + clientId
                 + "&redirect_uri=" + redirectUri
@@ -52,7 +53,7 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
 
     @Override
     public CalendlyTokenResponse exchangeCodeForToken(String code) {
-        log.info("CalendlyApiClient.exchangeCodeForToken");
+        log.info("Exchanging authorization code for Calendly tokens");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -64,21 +65,19 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
         body.put("redirect_uri", redirectUri);
 
         HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
-        log.info("Body before sending request: {}", request.getBody());
         ResponseEntity<CalendlyTokenResponse> response = restTemplate.exchange(
                 TOKEN_URL,
                 HttpMethod.POST,
                 request,
                 CalendlyTokenResponse.class
         );
-        log.info("Response body from Calendly: {}", response.getBody());
-        log.info("Response headers from Calendly: {}", response.getHeaders());
+        log.info("Successfully exchanged code for Calendly tokens");
         return response.getBody();
     }
 
     @Override
     public CalendlyTokenResponse refreshAccessToken(String refreshToken) {
-        log.info("CalendlyApiClient.refreshAccessToken");
+        log.info("Refreshing Calendly access token");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 

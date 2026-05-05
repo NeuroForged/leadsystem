@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Slf4j
@@ -39,6 +40,7 @@ public class ScraperServiceImpl implements ScraperService {
                 .bodyValue(Map.of("url", websiteUrl, "client_id", clientId, "max_pages", maxPages))
                 .retrieve()
                 .bodyToMono(ScrapeJobResponse.class)
+                .timeout(Duration.ofSeconds(30))
                 .block();
     }
 
@@ -49,6 +51,7 @@ public class ScraperServiceImpl implements ScraperService {
                 .uri("/api/jobs/{id}", scraperJobId)
                 .retrieve()
                 .bodyToMono(ScraperStatusResponse.class)
+                .timeout(Duration.ofSeconds(15))
                 .block();
     }
 
@@ -59,6 +62,7 @@ public class ScraperServiceImpl implements ScraperService {
                 .uri("/api/jobs/{id}/zip", scraperJobId)
                 .retrieve()
                 .bodyToMono(byte[].class)
+                .timeout(Duration.ofSeconds(120))
                 .block();
     }
 }

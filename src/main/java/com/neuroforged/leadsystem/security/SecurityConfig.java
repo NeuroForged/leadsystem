@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/leads/**").authenticated()
+                        .requestMatchers("/api/v1/leads/**").authenticated()
                         .requestMatchers("/api/clients/**").authenticated()
                         .requestMatchers("/api/calendly/authorize").authenticated()
                         .requestMatchers("/api/calendly/webhook").permitAll()

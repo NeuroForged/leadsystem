@@ -4,6 +4,7 @@ import com.neuroforged.leadsystem.dto.ScrapePresetDto;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.ScrapePreset;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
+import com.neuroforged.leadsystem.mapper.ScrapePresetMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.ScrapePresetRepository;
 import com.neuroforged.leadsystem.service.ScrapePresetService;
@@ -20,6 +21,7 @@ public class ScrapePresetServiceImpl implements ScrapePresetService {
 
     private final ScrapePresetRepository scrapePresetRepository;
     private final ClientRepository clientRepository;
+    private final ScrapePresetMapper scrapePresetMapper;
 
     @Override
     @Transactional
@@ -34,13 +36,13 @@ public class ScrapePresetServiceImpl implements ScrapePresetService {
                 .maxPages(dto.getMaxPages() != null ? dto.getMaxPages() : 1000)
                 .build();
 
-        return toDto(scrapePresetRepository.save(preset));
+        return scrapePresetMapper.toDto(scrapePresetRepository.save(preset));
     }
 
     @Override
     public List<ScrapePresetDto> listByClient(Long clientId) {
         return scrapePresetRepository.findByClientIdOrderByCreatedAtDesc(clientId)
-                .stream().map(this::toDto).collect(Collectors.toList());
+                .stream().map(scrapePresetMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -51,15 +53,5 @@ public class ScrapePresetServiceImpl implements ScrapePresetService {
         }
         scrapePresetRepository.deleteById(id);
     }
-
-    private ScrapePresetDto toDto(ScrapePreset p) {
-        return ScrapePresetDto.builder()
-                .id(p.getId())
-                .clientId(p.getClient() != null ? p.getClient().getId() : null)
-                .name(p.getName())
-                .url(p.getUrl())
-                .maxPages(p.getMaxPages())
-                .createdAt(p.getCreatedAt())
-                .build();
-    }
 }
+

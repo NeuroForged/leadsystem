@@ -41,10 +41,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
       show-details: always
+    prometheus:
+      enabled: true
 
 neuroforged:
   admin:
@@ -58,6 +60,7 @@ neuroforged:
     from: ${SPRING_MAIL_FROM}
   tokens:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
+  encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: false
 
 rate-limit:

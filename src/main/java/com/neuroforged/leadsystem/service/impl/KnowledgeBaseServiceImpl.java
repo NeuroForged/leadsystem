@@ -1,17 +1,21 @@
 package com.neuroforged.leadsystem.service.impl;
 
 import com.neuroforged.leadsystem.dto.KbDocumentDto;
+import com.neuroforged.leadsystem.dto.KbFetchJobStatus;
 import com.neuroforged.leadsystem.entity.KnowledgeBaseDocument;
 import com.neuroforged.leadsystem.entity.ScrapeJob;
 import com.neuroforged.leadsystem.entity.ScrapeJobStatus;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
+import com.neuroforged.leadsystem.mapper.KbDocumentMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.KnowledgeBaseDocumentRepository;
 import com.neuroforged.leadsystem.repository.ScrapeJobRepository;
+import com.neuroforged.leadsystem.service.KbFetchStatusStore;
 import com.neuroforged.leadsystem.service.KnowledgeBaseService;
 import com.neuroforged.leadsystem.service.ScraperService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +36,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final ScrapeJobRepository scrapeJobRepository;
     private final ClientRepository clientRepository;
     private final ScraperService scraperService;
+    private final KbDocumentMapper kbDocumentMapper;
+    private final KbFetchStatusStore statusStore;
 
     @Override
     @Transactional
@@ -81,20 +87,33 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         kbRepository.saveAll(docs);
         log.info("Stored {} KB documents for clientId={}", docs.size(), clientId);
-        return docs.stream().map(this::toDto).toList();
+        return docs.stream().map(kbDocumentMapper::toDto).toList();
+    }
+
+    @Async
+    @Override
+    public void fetchAsync(Long clientId, String jobId) {
+        statusStore.put(jobId, KbFetchJobStatus.running(jobId));
+        try {
+            List<KbDocumentDto> docs = fetchAndStore(clientId);
+            statusStore.put(jobId, KbFetchJobStatus.done(jobId, docs.size()));
+        } catch (Exception e) {
+            log.error("Async KB fetch failed for clientId={}: {}", clientId, e.getMessage());
+            statusStore.put(jobId, KbFetchJobStatus.error(jobId, e.getMessage()));
+        }
     }
 
     @Override
     public List<KbDocumentDto> listByClient(Long clientId) {
         return kbRepository.findByClientIdOrderByFilenameAsc(clientId)
-                .stream().map(this::toDto).toList();
+                .stream().map(kbDocumentMapper::toDto).toList();
     }
 
     @Override
     public List<KbDocumentDto> search(Long clientId, String q) {
         if (q == null || q.isBlank()) return listByClient(clientId);
         return kbRepository.searchByClientId(clientId, q)
-                .stream().map(this::toDto).toList();
+                .stream().map(kbDocumentMapper::toDto).toList();
     }
 
     @Override
@@ -102,16 +121,5 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public void clearByClient(Long clientId) {
         kbRepository.deleteByClientId(clientId);
     }
-
-    private KbDocumentDto toDto(KnowledgeBaseDocument doc) {
-        return KbDocumentDto.builder()
-                .id(doc.getId())
-                .clientId(doc.getClient() != null ? doc.getClient().getId() : null)
-                .scrapeJobId(doc.getScrapeJob() != null ? doc.getScrapeJob().getId() : null)
-                .filename(doc.getFilename())
-                .content(doc.getContent())
-                .wordCount(doc.getWordCount())
-                .fetchedAt(doc.getFetchedAt())
-                .build();
-    }
 }
+

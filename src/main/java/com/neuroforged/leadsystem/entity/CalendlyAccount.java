@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.entity;
 
+import com.neuroforged.leadsystem.config.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +17,12 @@ public class CalendlyAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 2000)
     private String accessToken;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 2000)
     private String refreshToken;
     private String owner;
     private String ownerType;
