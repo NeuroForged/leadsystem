@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.controller;
 
+import com.neuroforged.leadsystem.config.ApiTokenFilter;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.LeadStatusUpdateRequest;
@@ -8,6 +9,9 @@ import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.LeadService;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Set;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,12 +29,24 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class LeadController {
 
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of("createdAt", "leadScore", "email", "status", "businessName", "customerType");
+
     private final LeadService leadService;
 
     @PostMapping
     @PreAuthorize("hasRole('INTERNAL')")
-    public ResponseEntity<LeadResponseDTO> createLead(@Valid @RequestBody LeadRequestDTO leadRequestDTO) {
+    public ResponseEntity<LeadResponseDTO> createLead(
+            @Valid @RequestBody LeadRequestDTO leadRequestDTO,
+            HttpServletRequest request) {
         leadRequestDTO.sanitize();
+        Long apiKeyClientId = (Long) request.getAttribute(ApiTokenFilter.API_KEY_CLIENT_ID_ATTR);
+        if (apiKeyClientId != null) {
+            // Enforce that the body's clientId matches the API key's client
+            if (!String.valueOf(apiKeyClientId).equals(leadRequestDTO.getClientId())) {
+                throw new InvalidLeadException("clientId in request does not match the authenticated API key's client.");
+            }
+        }
         log.info("Received lead creation request for email: {}", leadRequestDTO.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(leadService.createLead(leadRequestDTO));
     }
@@ -45,6 +61,9 @@ public class LeadController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new InvalidLeadException("Invalid sortBy field '" + sortBy + "'. Allowed: " + ALLOWED_SORT_FIELDS);
+        }
         String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);

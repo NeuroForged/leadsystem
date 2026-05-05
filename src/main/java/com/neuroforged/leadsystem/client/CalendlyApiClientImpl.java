@@ -3,10 +3,10 @@ package com.neuroforged.leadsystem.client;
 import com.neuroforged.leadsystem.dto.CalendlyTokenResponse;
 import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
 import com.neuroforged.leadsystem.dto.CalendlyEventInviteesResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -18,10 +18,16 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class CalendlyApiClientImpl implements CalendlyApiClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public CalendlyApiClientImpl() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(30_000);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     @Value("${calendly.client-id}")
     private String clientId;

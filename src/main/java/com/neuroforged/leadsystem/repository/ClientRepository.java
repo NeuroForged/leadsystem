@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
     Optional<Client> findByPrimaryEmail(String email);
+    Optional<Client> findByApiKey(String apiKey);
 
     @Query(value = """
             SELECT
