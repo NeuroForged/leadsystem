@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -18,15 +17,23 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authenticates chatbot lead-submission requests via per-client API keys.
+ *
+ * Each Client record has a unique {@code apiKey} field generated at creation time.
+ * The chatbot sends it as {@code X-Api-Key: <key>}. This filter looks up the matching
+ * Client, attaches its ID as {@value #API_KEY_CLIENT_ID_ATTR} on the request, and
+ * grants the INTERNAL Spring Security role.
+ *
+ * Requests with an unrecognised or missing key fall through to the JWT filter.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ApiTokenFilter extends OncePerRequestFilter {
 
+    /** Request attribute name carrying the authenticated client's Long ID. */
     public static final String API_KEY_CLIENT_ID_ATTR = "apiKeyClientId";
-
-    @Value("${neuroforged.tokens.internal}")
-    private String internalToken;
 
     private final RateLimitService rateLimitService;
     private final ClientRepository clientRepository;
@@ -38,21 +45,11 @@ public class ApiTokenFilter extends OncePerRequestFilter {
         String apiKey = request.getHeader("X-Api-Key");
 
         if ((path.startsWith("/api/leads") || path.startsWith("/api/v1/leads")) && apiKey != null) {
-            Long resolvedClientId = null;
-
-            if (apiKey.equals(internalToken)) {
-                // Global shared token — no client scoping
-                log.debug("Authenticated via global internal token for path: {}", path);
-            } else {
-                // Try per-client API key
-                var client = clientRepository.findByApiKey(apiKey);
-                if (client.isPresent()) {
-                    resolvedClientId = client.get().getId();
-                    log.debug("Authenticated via client API key for clientId={}, path={}", resolvedClientId, path);
-                } else {
-                    chain.doFilter(request, response);
-                    return;
-                }
+            var client = clientRepository.findByApiKey(apiKey);
+            if (client.isEmpty()) {
+                log.warn("Rejected X-Api-Key request — key not found for path: {}", path);
+                chain.doFilter(request, response);
+                return;
             }
 
             if (!rateLimitService.tryConsume(apiKey)) {
@@ -65,9 +62,9 @@ public class ApiTokenFilter extends OncePerRequestFilter {
                 return;
             }
 
-            if (resolvedClientId != null) {
-                request.setAttribute(API_KEY_CLIENT_ID_ATTR, resolvedClientId);
-            }
+            Long clientId = client.get().getId();
+            request.setAttribute(API_KEY_CLIENT_ID_ATTR, clientId);
+            log.debug("Authenticated via client API key for clientId={}, path={}", clientId, path);
 
             UserDetails userDetails = User.withUsername("internal-bot")
                     .password("")

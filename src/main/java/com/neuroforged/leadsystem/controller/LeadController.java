@@ -10,8 +10,6 @@ import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.security.AuthPrincipalUtil;
 import com.neuroforged.leadsystem.service.LeadService;
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Set;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
 
 @Slf4j
 @RestController
@@ -41,11 +41,8 @@ public class LeadController {
             HttpServletRequest request) {
         leadRequestDTO.sanitize();
         Long apiKeyClientId = (Long) request.getAttribute(ApiTokenFilter.API_KEY_CLIENT_ID_ATTR);
-        if (apiKeyClientId != null) {
-            // Enforce that the body's clientId matches the API key's client
-            if (!String.valueOf(apiKeyClientId).equals(leadRequestDTO.getClientId())) {
-                throw new InvalidLeadException("clientId in request does not match the authenticated API key's client.");
-            }
+        if (apiKeyClientId != null && !String.valueOf(apiKeyClientId).equals(leadRequestDTO.getClientId())) {
+            throw new InvalidLeadException("clientId in request does not match the authenticated API key's client.");
         }
         log.info("Received lead creation request for email: {}", leadRequestDTO.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(leadService.createLead(leadRequestDTO));

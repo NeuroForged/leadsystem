@@ -10,6 +10,7 @@ import com.neuroforged.leadsystem.service.CalendlyWebhookService;
 import com.neuroforged.leadsystem.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneId;
@@ -104,6 +105,7 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
         CalendlyWebhookPayload.Payload p = payload.getPayload();
         String uri = p.getEvent();
 
+        // App-level idempotency check (fast path before the DB round-trip)
         if (calendlyMeetingRepository.findByCalendlyUri(uri).isPresent()) {
             log.info("Idempotent skip — meeting already exists for uri={}", uri);
             return;
@@ -125,8 +127,13 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
                 .client(client.orElse(null))
                 .build();
 
-        calendlyMeetingRepository.save(meeting);
-        log.info("Created CalendlyMeeting for invitee={}", inviteeEmail);
+        try {
+            calendlyMeetingRepository.save(meeting);
+            log.info("Created CalendlyMeeting for invitee={}", inviteeEmail);
+        } catch (DataIntegrityViolationException e) {
+            // Race condition — another thread/node inserted the same URI concurrently; treat as idempotent
+            log.info("Idempotent skip (concurrent insert) — meeting already exists for uri={}", uri);
+        }
     }
 
     private void handleCanceled(CalendlyWebhookPayload payload) {
