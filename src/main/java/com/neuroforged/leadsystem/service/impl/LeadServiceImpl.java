@@ -14,8 +14,12 @@ import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
 import com.neuroforged.leadsystem.repository.spec.LeadFilterSpec;
 import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
+import com.neuroforged.leadsystem.entity.NotificationEventType;
+import com.neuroforged.leadsystem.service.LeadEnrichmentService;
 import com.neuroforged.leadsystem.service.LeadNotificationService;
+import com.neuroforged.leadsystem.service.LeadRoutingService;
 import com.neuroforged.leadsystem.service.LeadService;
+import com.neuroforged.leadsystem.service.NotificationService;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +27,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -32,8 +38,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LeadServiceImpl implements LeadService {
 
+    private static final int HIGH_SCORE_THRESHOLD = 80;
+
     private final LeadRepository leadRepository;
     private final LeadNotificationService leadNotificationService;
+    private final NotificationService notificationService;
+    private final LeadEnrichmentService leadEnrichmentService;
+    private final LeadRoutingService leadRoutingService;
     private final LeadMapper leadMapper;
     private final ClientRepository clientRepository;
     private final OutboundWebhookService outboundWebhookService;
@@ -50,6 +61,8 @@ public class LeadServiceImpl implements LeadService {
         }
 
         Lead lead = buildLeadEntity(dto);
+        leadEnrichmentService.enrich(lead);
+        leadRoutingService.route(lead);
         Lead savedLead = leadRepository.save(lead);
 
         metrics.recordLeadReceived(savedLead.getClientId());
@@ -59,8 +72,14 @@ public class LeadServiceImpl implements LeadService {
             Long clientLongId = Long.parseLong(savedLead.getClientId());
             Optional<Client> clientOpt = clientRepository.findById(clientLongId);
             clientOpt.ifPresent(client -> outboundWebhookService.notifyWebhook(savedLead, client));
+
+            Map<String, String> ctx = buildLeadContext(savedLead);
+            notificationService.notify(clientLongId, NotificationEventType.NEW_LEAD, ctx);
+            if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
+                notificationService.notify(clientLongId, NotificationEventType.LEAD_SCORED_HIGH, ctx);
+            }
         } catch (Exception e) {
-            log.warn("Outbound webhook skipped for lead {} - client lookup failed: {}", savedLead.getId(), e.getMessage());
+            log.warn("Outbound webhook/notification skipped for lead {} - client lookup failed: {}", savedLead.getId(), e.getMessage());
         }
 
         return leadMapper.toDto(savedLead);
@@ -105,6 +124,16 @@ public class LeadServiceImpl implements LeadService {
         if (dto.getClientId() == null || dto.getClientId().isBlank()) {
             throw new InvalidLeadException("Client ID must be provided.");
         }
+    }
+
+    private Map<String, String> buildLeadContext(Lead lead) {
+        Map<String, String> ctx = new LinkedHashMap<>();
+        ctx.put("Email", lead.getEmail());
+        ctx.put("Name", lead.getFirstName() != null ? lead.getFirstName() : "");
+        ctx.put("Business", lead.getBusinessName() != null ? lead.getBusinessName() : "");
+        ctx.put("Score", lead.getLeadScore() != null ? String.valueOf(lead.getLeadScore()) : "N/A");
+        ctx.put("Client ID", lead.getClientId());
+        return ctx;
     }
 
     private Lead buildLeadEntity(LeadRequestDTO dto) {

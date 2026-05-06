@@ -6,8 +6,10 @@ import com.neuroforged.leadsystem.entity.*;
 import com.neuroforged.leadsystem.repository.CalendlyMeetingRepository;
 import com.neuroforged.leadsystem.repository.CalendlyWebhookLogRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
+import com.neuroforged.leadsystem.entity.NotificationEventType;
 import com.neuroforged.leadsystem.service.CalendlyWebhookService;
 import com.neuroforged.leadsystem.service.EmailService;
+import com.neuroforged.leadsystem.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +33,7 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
     private final ClientRepository clientRepository;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     @Override
     public void handleWebhook(CalendlyWebhookPayload payload, Map<String, String> headers) {
@@ -130,6 +133,11 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
         try {
             calendlyMeetingRepository.save(meeting);
             log.info("Created CalendlyMeeting for invitee={}", inviteeEmail);
+            client.ifPresent(c -> notificationService.notify(c.getId(), NotificationEventType.MEETING_BOOKED,
+                    Map.of("Invitee", inviteeEmail,
+                            "Name", p.getInvitee().getName() != null ? p.getInvitee().getName() : "",
+                            "Start", start.toString(),
+                            "Event Type", p.getEventType().getName() != null ? p.getEventType().getName() : "")));
         } catch (DataIntegrityViolationException e) {
             // Race condition — another thread/node inserted the same URI concurrently; treat as idempotent
             log.info("Idempotent skip (concurrent insert) — meeting already exists for uri={}", uri);

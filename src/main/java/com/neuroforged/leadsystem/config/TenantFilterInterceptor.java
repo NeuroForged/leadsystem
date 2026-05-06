@@ -30,7 +30,8 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
                 String clientIdStr = String.valueOf(clientId);
                 Session session = entityManager.unwrap(Session.class);
                 session.enableFilter("clientFilter").setParameter("clientId", clientIdStr);
-                log.debug("Enabled clientFilter for clientId={}", clientIdStr);
+                session.enableFilter("longClientFilter").setParameter("clientId", clientId);
+                log.debug("Enabled clientFilter and longClientFilter for clientId={}", clientId);
             }
         }
         return true;

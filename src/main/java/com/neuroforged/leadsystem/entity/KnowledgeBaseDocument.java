@@ -3,9 +3,11 @@ package com.neuroforged.leadsystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 
 import java.time.LocalDateTime;
 
+@Filter(name = "longClientFilter", condition = "client_id = :clientId")
 @Entity
 @Data
 @NoArgsConstructor
