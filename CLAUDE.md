@@ -173,3 +173,4 @@ Project: **LSB** on [alchemizeiq.atlassian.net](https://alchemizeiq.atlassian.ne
 - **Java 21 preview**: `STR."""..."""` template strings in `LeadServiceImpl`. Keep `--enable-preview` in Maven compiler plugin.
 - **Rate limiter (LSB-37)**: Bucket4j on `POST /api/leads`. Rapid test submissions (e.g. seeding DB) need `sleep 2` between requests or they get throttled.
 - **Em dash in bash heredoc**: Unicode `—` in curl JSON payloads causes 400 "Failed to read request". Use ASCII `-` instead.
+- **Schema drift audit (LSB-90)**: `SchemaAuditRunner` (`@Profile("prod")`) runs on startup, compares Hibernate entity column mappings against `information_schema.columns`. Logs WARN per missing column. `neuroforged.schema-audit.fail-on-drift: false` — set to `true` to abort startup on drift. Only active in prod profile.

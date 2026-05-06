@@ -62,6 +62,8 @@ neuroforged:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
   encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: ${NEUROFORGED_SEED_SAMPLE_DATA:false}
+  schema-audit:
+    fail-on-drift: false
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM:60}
