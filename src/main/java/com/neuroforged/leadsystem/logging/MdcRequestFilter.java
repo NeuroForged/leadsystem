@@ -24,7 +24,7 @@ import java.util.UUID;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class RequestContextFilter extends OncePerRequestFilter {
+public class MdcRequestFilter extends OncePerRequestFilter {
 
     public static final String MDC_REQUEST_ID = "req";
     public static final String HEADER_REQUEST_ID = "X-Request-Id";
@@ -51,7 +51,7 @@ public class RequestContextFilter extends OncePerRequestFilter {
         }
     }
 
-    /** Skip MDC setup for static assets and actuator health (reduces log noise). */
+    /** Skip MDC setup for actuator health (reduces log noise). */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
