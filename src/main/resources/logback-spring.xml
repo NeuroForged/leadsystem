@@ -1,13 +1,136 @@
 <configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         LAYER 1 — EVENTS LOG
+         Routed exclusively from BusinessEventLogger (logger name "EVENTS").
+         Plain-text, human-readable, written to stdout + rolling file.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Events → stdout (visible in Coolify) -->
+    <appender name="EVENTS_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss} %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="com.neuroforged.leadsystem" level="DEBUG"/>
+    <!-- Events → rolling file (/logs/events.log) -->
+    <springProfile name="prod">
+        <appender name="EVENTS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>/logs/events.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>/logs/events.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{HH:mm:ss} %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
 
-    <root level="INFO">
-        <appender-ref ref="STDOUT"/>
-    </root>
+    <!-- ══════════════════════════════════════════════════════════════════
+         LAYER 2 — FULL TECHNICAL LOG
+         JSON format for Promtail → Loki ingestion.
+         Includes MDC fields: req, clientId, userId.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <springProfile name="prod">
+        <appender name="FULL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>/logs/app.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>/logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>14</maxHistory>
+                <totalSizeCap>1GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>req</includeMdcKeyName>
+                <includeMdcKeyName>clientId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <customFields>{"app":"leadsystem","env":"prod"}</customFields>
+                <fieldNames>
+                    <timestamp>ts</timestamp>
+                    <message>message</message>
+                    <logger>logger</logger>
+                    <thread>thread</thread>
+                    <level>level</level>
+                </fieldNames>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         LOCAL DEV — plain-text console, full detail, all loggers
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <springProfile name="local">
+        <appender name="LOCAL_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level [%15.15thread] [req=%X{req}] [client=%X{clientId}] %-50logger{50} - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         LOGGER ROUTING
+         EVENTS logger: additivity=false → goes only to EVENTS appenders,
+                        never to root (prevents duplication in full log).
+         Root: everything else → full log appender(s).
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- EVENTS logger — local -->
+    <springProfile name="local">
+        <logger name="EVENTS" level="INFO" additivity="false">
+            <appender-ref ref="LOCAL_CONSOLE"/>
+        </logger>
+    </springProfile>
+
+    <!-- EVENTS logger — prod -->
+    <springProfile name="prod">
+        <logger name="EVENTS" level="INFO" additivity="false">
+            <appender-ref ref="EVENTS_CONSOLE"/>
+            <appender-ref ref="EVENTS_FILE"/>
+        </logger>
+    </springProfile>
+
+    <!-- Suppress noise in all profiles -->
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="WARN"/>
+    <logger name="org.springframework.security.web.FilterChainProxy" level="WARN"/>
+    <logger name="org.springframework.boot.autoconfigure" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <!-- Suppress actuator health check spam -->
+    <logger name="org.springframework.web.servlet.DispatcherServlet" level="WARN"/>
+
+    <!-- App code: DEBUG in local, INFO in prod (full log captures everything) -->
+    <springProfile name="local">
+        <logger name="com.neuroforged.leadsystem" level="DEBUG"/>
+    </springProfile>
+    <springProfile name="prod">
+        <logger name="com.neuroforged.leadsystem" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Root console for prod (non-EVENTS logs on stdout) -->
+    <springProfile name="prod">
+        <appender name="ROOT_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level [%X{req}] [client=%X{clientId}] %logger{40} - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- Root logger -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="LOCAL_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ROOT_CONSOLE"/>
+            <appender-ref ref="FULL_FILE"/>
+        </root>
+    </springProfile>
+
 </configuration>

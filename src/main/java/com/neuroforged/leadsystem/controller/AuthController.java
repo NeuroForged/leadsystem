@@ -5,6 +5,7 @@ import com.neuroforged.leadsystem.dto.AuthenticationResponse;
 import com.neuroforged.leadsystem.dto.ChangePasswordRequest;
 import com.neuroforged.leadsystem.dto.UserInfoResponse;
 import com.neuroforged.leadsystem.entity.User;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import com.neuroforged.leadsystem.security.CustomUserPrincipal;
 import com.neuroforged.leadsystem.security.JwtUtil;
@@ -41,12 +42,13 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final Environment environment;
+    private final BusinessEventLogger eventLogger;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request,
                                    HttpServletResponse response) {
         try {
-            log.info("Attempting login for email: {}", request.getEmail());
+            log.debug("Login attempt for email={}", request.getEmail());
 
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -54,8 +56,6 @@ public class AuthController {
                             request.getPassword()
                     )
             );
-
-            log.info("Authentication successful for: {}", request.getEmail());
 
             User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
             String accessToken = jwtUtil.generateToken(user);
@@ -65,9 +65,11 @@ public class AuthController {
             addCookie(response, "alchemize_at", accessToken, (int) jwtUtil.getAccessTokenMaxAge(), secure);
             addCookie(response, "alchemize_rt", refreshToken, (int) jwtUtil.getRefreshTokenMaxAge(), secure);
 
+            eventLogger.authSuccess(request.getEmail());
             return ResponseEntity.ok(new AuthenticationResponse(accessToken));
         } catch (AuthenticationException e) {
-            log.warn("Authentication failed for {}: {}", request.getEmail(), e.getMessage());
+            eventLogger.authFailed("bad_credentials", request.getEmail(), null);
+            log.debug("Login failed for email={}: {}", request.getEmail(), e.getMessage());
             return ResponseEntity.status(401).body("Invalid email or password");
         }
     }

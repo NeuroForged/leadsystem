@@ -6,5 +6,7 @@ import java.util.Map;
 
 public interface CalendlyWebhookService {
     void handleWebhook(CalendlyWebhookPayload payload, Map<String, String> headers);
-    void retryFailedWebhooks();
+    RetryResult retryFailedWebhooks();
+
+    record RetryResult(int retried, int deadLettered) {}
 }

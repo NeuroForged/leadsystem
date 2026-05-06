@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +28,7 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
 
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
+    private final BusinessEventLogger eventLogger;
 
     @Async
     @Override
@@ -53,17 +56,20 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
             requestSpec = requestSpec.header("X-Alchemize-Signature", signature);
         }
 
+        long start = Instant.now().toEpochMilli();
         try {
-            String status = requestSpec
+            requestSpec
                     .bodyValue(payload)
                     .retrieve()
                     .toBodilessEntity()
                     .timeout(Duration.ofSeconds(5))
-                    .map(response -> response.getStatusCode().toString())
                     .block();
-            log.info("Webhook delivered to {} for lead {} - status {}", webhookUrl, lead.getId(), status);
+            long latency = Instant.now().toEpochMilli() - start;
+            eventLogger.outboundWebhookDelivered(client.getName(), webhookUrl, latency);
+            log.debug("Outbound webhook delivered to {} for lead {} latency={}ms", webhookUrl, lead.getId(), latency);
         } catch (Exception e) {
-            log.warn("Webhook delivery failed to {} for lead {}: {}", webhookUrl, lead.getId(), e.getMessage());
+            log.warn("Outbound webhook delivery failed to {} for lead {}: {}", webhookUrl, lead.getId(), e.getMessage());
+            eventLogger.outboundWebhookFailed(client.getName(), webhookUrl, 0, 1, 1);
         }
     }
 

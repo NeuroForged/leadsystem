@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
@@ -34,41 +35,46 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
     private final CalendlyTokenRefreshService tokenRefreshService;
 
     @Override
-    public void pollAllAccounts() {
+    public int pollAllAccounts() {
         List<CalendlyAccount> accounts = accountRepository.findAllByUsePollingTrueAndRequiresReauthFalse();
 
         if (accounts.isEmpty()) {
-            return;
+            return 0;
         }
 
-        log.info("Polling {} Calendly account(s) for new events", accounts.size());
+        log.debug("Polling {} Calendly account(s) for new events", accounts.size());
 
+        AtomicInteger synced = new AtomicInteger(0);
         for (CalendlyAccount account : accounts) {
             try {
-                pollAccount(account);
+                synced.addAndGet(pollAccount(account));
             } catch (Exception ex) {
                 log.error("Polling failed for clientId={}: {}", account.getClientId(), ex.getMessage(), ex);
             }
         }
+        return synced.get();
     }
 
-    private void pollAccount(CalendlyAccount account) {
+    private int pollAccount(CalendlyAccount account) {
         CalendlyAccount fresh = tokenRefreshService.ensureFreshToken(account.getClientId());
 
         ZonedDateTime since = account.getLastPolledAt() != null
                 ? account.getLastPolledAt().atZone(ZoneId.of("UTC"))
                 : ZonedDateTime.now(ZoneId.of("UTC")).minusHours(DEFAULT_LOOKBACK_HOURS);
 
-        log.info("Polling Calendly events for clientId={} since {}", account.getClientId(), since);
+        log.debug("Polling Calendly events for clientId={} since {}", account.getClientId(), since);
 
-        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.SCHEDULED);
-        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.CANCELLED);
+        AtomicInteger count = new AtomicInteger(0);
+        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.SCHEDULED, count);
+        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.CANCELLED, count);
 
         account.setLastPolledAt(LocalDateTime.now(ZoneId.of("UTC")));
         accountRepository.save(account);
+        return count.get();
     }
 
-    private void syncEvents(String accessToken, String organization, ZonedDateTime since, MeetingStatus targetStatus) {
+    private void syncEvents(String accessToken, String organization, ZonedDateTime since,
+                            MeetingStatus targetStatus, AtomicInteger syncedCount) {
         String apiStatus = (targetStatus == MeetingStatus.SCHEDULED) ? "active" : "canceled";
 
         CalendlyScheduledEventsResponse response;
@@ -86,6 +92,7 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
         for (CalendlyScheduledEventsResponse.Event event : response.getCollection()) {
             try {
                 processEvent(accessToken, event, targetStatus);
+                syncedCount.incrementAndGet();
             } catch (Exception ex) {
                 log.warn("Failed to process polled event uri={}: {}", event.getUri(), ex.getMessage());
             }
