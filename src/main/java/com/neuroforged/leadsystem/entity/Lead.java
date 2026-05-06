@@ -59,6 +59,9 @@ public class Lead {
     @Enumerated(STRING)
     private LeadStatus status;
 
+    @Column(length = 1000)
+    private String relevantKbSnippet;
+
     @Column(updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;

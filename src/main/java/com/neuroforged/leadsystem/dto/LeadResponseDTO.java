@@ -23,6 +23,7 @@ public class LeadResponseDTO {
     private String leadChallenge;
     private String clientId;
     private LeadStatus status;
+    private String relevantKbSnippet;
     private LocalDateTime createdAt;
 
 }
