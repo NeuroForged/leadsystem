@@ -19,6 +19,10 @@ RUN ./mvnw clean package -DskipTests
 FROM eclipse-temurin:21-jdk-alpine
 
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Create log directory and hand it to the spring user before dropping privileges
+RUN mkdir -p /logs && chown spring:spring /logs
+
 USER spring:spring
 
 WORKDIR /app
@@ -28,4 +32,6 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "--enable-preview", "-jar", "app.jar"]
+VOLUME /logs
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
