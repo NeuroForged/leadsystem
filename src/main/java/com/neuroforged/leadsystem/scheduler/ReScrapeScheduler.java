@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.scheduler;
 
 import com.neuroforged.leadsystem.entity.Client;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.service.ScrapeJobService;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,11 @@ public class ReScrapeScheduler {
 
     private final ClientRepository clientRepository;
     private final ScrapeJobService scrapeJobService;
+    private final LeadSystemMetrics metrics;
 
     @Scheduled(cron = "0 0 3 * * *") // 03:00 UTC daily
     public void triggerDueReScrapes() {
+        metrics.recordSchedulerRun("rescrape");
         List<Client> candidates = clientRepository.findAll().stream()
                 .filter(c -> c.getScrapeFrequencyDays() != null && c.getScrapeFrequencyDays() > 0)
                 .filter(c -> c.getWebsiteUrl() != null && !c.getWebsiteUrl().isBlank())

@@ -2,6 +2,7 @@ package com.neuroforged.leadsystem.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.dto.CalendlyWebhookPayload;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.CalendlyWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class CalendlyWebhookController {
 
     private final CalendlyWebhookService calendlyWebhookService;
     private final ObjectMapper objectMapper;
+    private final LeadSystemMetrics metrics;
 
     @Value("${calendly.webhook-signing-key}")
     private String webhookSigningKey;
@@ -38,11 +40,13 @@ public class CalendlyWebhookController {
                                               @RequestHeader Map<String, String> headers) {
         if (signatureHeader == null) {
             log.warn("Rejected webhook: missing Calendly-Webhook-Signature header");
+            metrics.recordWebhook("rejected");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         if (!isSignatureValid(signatureHeader, rawBody)) {
             log.warn("Rejected webhook: invalid signature");
+            metrics.recordWebhook("rejected");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -50,8 +54,10 @@ public class CalendlyWebhookController {
             CalendlyWebhookPayload payload = objectMapper.readValue(rawBody, CalendlyWebhookPayload.class);
             log.info("Handling Calendly webhook: {}", payload.getEvent());
             calendlyWebhookService.handleWebhook(payload, headers);
+            metrics.recordWebhook("success");
         } catch (Exception e) {
             log.error("Failed to deserialize or handle Calendly webhook", e);
+            metrics.recordWebhook("failure");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 

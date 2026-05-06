@@ -35,6 +35,10 @@ public class ClientMapper {
         dto.setUpdatedAt(client.getUpdatedAt());
         dto.setLastScrapedAt(client.getLastScrapedAt());
         dto.setScrapeFrequencyDays(client.getScrapeFrequencyDays());
+        dto.setLogoUrl(client.getLogoUrl());
+        dto.setAccentColor(client.getAccentColor());
+        dto.setWebhookUrl(client.getWebhookUrl());
+        dto.setWebhookSecret(client.getWebhookSecret());
 
         String emails = client.getNotificationEmails();
         dto.setNotificationEmails(emails == null || emails.isBlank()

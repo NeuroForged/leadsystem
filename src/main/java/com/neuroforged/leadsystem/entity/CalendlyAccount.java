@@ -3,9 +3,14 @@ package com.neuroforged.leadsystem.entity;
 import com.neuroforged.leadsystem.config.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 
+@FilterDef(name = "longClientFilter", parameters = @ParamDef(name = "clientId", type = Long.class))
+@Filter(name = "longClientFilter", condition = "client_id = :clientId")
 @Entity
 @Data
 @NoArgsConstructor

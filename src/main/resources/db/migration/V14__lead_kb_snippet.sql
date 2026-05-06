@@ -1,0 +1,1 @@
+ALTER TABLE lead ADD COLUMN IF NOT EXISTS relevant_kb_snippet VARCHAR(1000);

@@ -54,6 +54,10 @@ public class ClientServiceImpl implements ClientService {
         if (dto.getScrapeFrequencyDays() != null) {
             client.setScrapeFrequencyDays(dto.getScrapeFrequencyDays());
         }
+        if (dto.getLogoUrl() != null) client.setLogoUrl(dto.getLogoUrl());
+        if (dto.getAccentColor() != null) client.setAccentColor(dto.getAccentColor());
+        if (dto.getWebhookUrl() != null) client.setWebhookUrl(dto.getWebhookUrl());
+        if (dto.getWebhookSecret() != null) client.setWebhookSecret(dto.getWebhookSecret());
         return clientMapper.toDto(clientRepository.save(client));
     }
 
