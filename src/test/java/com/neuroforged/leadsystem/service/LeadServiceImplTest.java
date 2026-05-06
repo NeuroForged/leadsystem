@@ -6,7 +6,13 @@ import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.mapper.LeadMapper;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
+import com.neuroforged.leadsystem.service.LeadEnrichmentService;
+import com.neuroforged.leadsystem.service.LeadRoutingService;
+import com.neuroforged.leadsystem.service.NotificationService;
+import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import com.neuroforged.leadsystem.service.impl.LeadServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +35,25 @@ class LeadServiceImplTest {
     private LeadNotificationService leadNotificationService;
 
     @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private LeadEnrichmentService leadEnrichmentService;
+
+    @Mock
+    private LeadRoutingService leadRoutingService;
+
+    @Mock
     private LeadMapper leadMapper;
+
+    @Mock
+    private ClientRepository clientRepository;
+
+    @Mock
+    private OutboundWebhookService outboundWebhookService;
+
+    @Mock
+    private LeadSystemMetrics metrics;
 
     @InjectMocks
     private LeadServiceImpl leadService;
