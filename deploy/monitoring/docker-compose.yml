@@ -1,0 +1,56 @@
+# Loki + Promtail monitoring stack
+# Deploy this in Coolify as a "Docker Compose" service on the same server as leadsystem.
+#
+# Prerequisites (do once in Coolify / on the server):
+#   1. leadsystem prod service: add volume  leadsystem-logs:/logs
+#   2. leadsystem dev  service: add volume  leadsystem-logs-dev:/logs
+#   Then redeploy both leadsystem services so the volume names are created.
+#
+# Grafana data source (add manually after first deploy):
+#   Name: Loki
+#   URL:  http://loki:3100
+#   (Grafana is already on the 'coolify' network, so it can reach loki by service name)
+
+services:
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"     # not exposed publicly
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki/data
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - coolify
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      # Mount leadsystem log volumes (read-only)
+      - leadsystem-logs:/var/log/leadsystem:ro
+      - leadsystem-logs-dev:/var/log/leadsystem-dev:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - coolify
+
+volumes:
+  loki-data:
+  leadsystem-logs:
+    external: true
+    name: leadsystem-logs      # Must match the volume name Coolify created for prod leadsystem
+  leadsystem-logs-dev:
+    external: true
+    name: leadsystem-logs-dev  # Must match the volume name Coolify created for dev leadsystem
+
+networks:
+  coolify:
+    external: true
+    name: coolify              # Coolify's shared Docker network
