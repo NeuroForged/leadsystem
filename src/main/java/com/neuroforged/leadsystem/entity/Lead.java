@@ -62,6 +62,8 @@ public class Lead {
     @Column(length = 1000)
     private String relevantKbSnippet;
 
+    private String assignedTo;
+
     @Column(updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -17,6 +17,7 @@ import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.entity.NotificationEventType;
 import com.neuroforged.leadsystem.service.LeadEnrichmentService;
 import com.neuroforged.leadsystem.service.LeadNotificationService;
+import com.neuroforged.leadsystem.service.LeadRoutingService;
 import com.neuroforged.leadsystem.service.LeadService;
 import com.neuroforged.leadsystem.service.NotificationService;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
@@ -43,6 +44,7 @@ public class LeadServiceImpl implements LeadService {
     private final LeadNotificationService leadNotificationService;
     private final NotificationService notificationService;
     private final LeadEnrichmentService leadEnrichmentService;
+    private final LeadRoutingService leadRoutingService;
     private final LeadMapper leadMapper;
     private final ClientRepository clientRepository;
     private final OutboundWebhookService outboundWebhookService;
@@ -60,6 +62,7 @@ public class LeadServiceImpl implements LeadService {
 
         Lead lead = buildLeadEntity(dto);
         leadEnrichmentService.enrich(lead);
+        leadRoutingService.route(lead);
         Lead savedLead = leadRepository.save(lead);
 
         metrics.recordLeadReceived(savedLead.getClientId());
