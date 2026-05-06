@@ -7,6 +7,7 @@ import com.neuroforged.leadsystem.repository.CalendlyMeetingRepository;
 import com.neuroforged.leadsystem.repository.CalendlyWebhookLogRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.entity.NotificationEventType;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.service.CalendlyWebhookService;
 import com.neuroforged.leadsystem.service.EmailService;
 import com.neuroforged.leadsystem.service.NotificationService;
@@ -34,6 +35,7 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
+    private final BusinessEventLogger eventLogger;
 
     @Override
     public void handleWebhook(CalendlyWebhookPayload payload, Map<String, String> headers) {
@@ -59,15 +61,18 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
     }
 
     @Override
-    public void retryFailedWebhooks() {
+    public CalendlyWebhookService.RetryResult retryFailedWebhooks() {
         List<CalendlyWebhookLog> failed = webhookLogRepository
                 .findBySuccessFalseAndRetryCountLessThan(MAX_RETRIES);
 
         if (failed.isEmpty()) {
-            return;
+            return new CalendlyWebhookService.RetryResult(0, 0);
         }
 
-        log.info("Retrying {} failed Calendly webhook(s)", failed.size());
+        log.debug("Retrying {} failed Calendly webhook(s)", failed.size());
+
+        int retried = 0;
+        int deadLettered = 0;
 
         for (CalendlyWebhookLog entry : failed) {
             try {
@@ -75,13 +80,15 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
                 processPayload(payload);
                 entry.setSuccess(true);
                 entry.setErrorDetails(null);
-                log.info("Webhook retry succeeded for log id={}", entry.getId());
+                retried++;
+                log.debug("Webhook retry succeeded for log id={}", entry.getId());
             } catch (Exception ex) {
                 entry.setRetryCount(entry.getRetryCount() + 1);
                 entry.setErrorDetails(ex.getMessage());
                 log.warn("Webhook retry failed (attempt {}) for log id={}: {}", entry.getRetryCount(), entry.getId(), ex.getMessage());
 
                 if (entry.getRetryCount() >= MAX_RETRIES) {
+                    deadLettered++;
                     log.error("Webhook dead-lettered after {} attempts for log id={}", MAX_RETRIES, entry.getId());
                     emailService.notifyAdminOfWebhookFailure(
                             "Calendly webhook permanently failed after " + MAX_RETRIES + " attempts.\n" +
@@ -91,6 +98,8 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
             }
             webhookLogRepository.save(entry);
         }
+
+        return new CalendlyWebhookService.RetryResult(retried, deadLettered);
     }
 
     private void processPayload(CalendlyWebhookPayload payload) {
@@ -132,7 +141,9 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
 
         try {
             calendlyMeetingRepository.save(meeting);
-            log.info("Created CalendlyMeeting for invitee={}", inviteeEmail);
+            String clientName = client.map(Client::getName).orElse(null);
+            eventLogger.meetingBooked(clientName, inviteeEmail, p.getEventType().getName(), start);
+            log.debug("Created CalendlyMeeting for invitee={}", inviteeEmail);
             client.ifPresent(c -> notificationService.notify(c.getId(), NotificationEventType.MEETING_BOOKED,
                     Map.of("Invitee", inviteeEmail,
                             "Name", p.getInvitee().getName() != null ? p.getInvitee().getName() : "",
@@ -145,11 +156,17 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
     }
 
     private void handleCanceled(CalendlyWebhookPayload payload) {
-        String uri = payload.getPayload().getEvent();
+        CalendlyWebhookPayload.Payload p = payload.getPayload();
+        String uri = p.getEvent();
+        String inviteeEmail = p.getInvitee() != null ? p.getInvitee().getEmail() : "unknown";
+        String eventTypeName = p.getEventType() != null ? p.getEventType().getName() : null;
+
         calendlyMeetingRepository.findByCalendlyUri(uri).ifPresentOrElse(meeting -> {
             meeting.setStatus(MeetingStatus.CANCELLED);
             calendlyMeetingRepository.save(meeting);
-            log.info("Marked meeting CANCELLED: uri={}", uri);
+            String clientName = meeting.getClient() != null ? meeting.getClient().getName() : null;
+            eventLogger.meetingCancelled(clientName, inviteeEmail, eventTypeName);
+            log.debug("Marked meeting CANCELLED: uri={}", uri);
         }, () -> log.warn("Received canceled event but no meeting found for uri={}", uri));
     }
 

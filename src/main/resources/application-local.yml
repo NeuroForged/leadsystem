@@ -70,3 +70,14 @@ rate-limit:
 scraper:
   api-url: ${SCRAPER_API_URL:https://scraper.alchemizeiq.com}
   api-key: ${SCRAPER_API_KEY}
+
+logging:
+  level:
+    com.neuroforged.leadsystem: DEBUG
+    org.springframework: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    com.zaxxer.hikari: WARN
+    # Suppress actuator health check request noise
+    org.springframework.web.servlet.DispatcherServlet: WARN

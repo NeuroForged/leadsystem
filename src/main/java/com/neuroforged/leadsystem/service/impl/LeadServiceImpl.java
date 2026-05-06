@@ -9,6 +9,7 @@ import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
 import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.mapper.LeadMapper;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.LeadRepository;
@@ -49,13 +50,22 @@ public class LeadServiceImpl implements LeadService {
     private final ClientRepository clientRepository;
     private final OutboundWebhookService outboundWebhookService;
     private final LeadSystemMetrics metrics;
+    private final BusinessEventLogger eventLogger;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
 
-        validateLeadRequest(dto);
+        try {
+            validateLeadRequest(dto);
+        } catch (InvalidLeadException e) {
+            eventLogger.leadInvalid(null, dto.getClientId(), e.getMessage(), dto.getEmail());
+            throw e;
+        }
+
+        String clientName = resolveClientName(dto.getClientId());
 
         if (leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())) {
+            eventLogger.leadDuplicate(clientName, dto.getClientId(), dto.getEmail());
             throw new DuplicateResourceException(
                     "Lead with email " + dto.getEmail() + " already exists for clientId " + dto.getClientId());
         }
@@ -66,6 +76,12 @@ public class LeadServiceImpl implements LeadService {
         Lead savedLead = leadRepository.save(lead);
 
         metrics.recordLeadReceived(savedLead.getClientId());
+
+        eventLogger.leadReceived(clientName, savedLead.getClientId(), savedLead.getEmail(),
+                savedLead.getLeadScore(),
+                savedLead.getRelevantKbSnippet() != null,
+                savedLead.getAssignedTo());
+
         leadNotificationService.notifyNewLead(savedLead);
 
         try {
@@ -83,6 +99,18 @@ public class LeadServiceImpl implements LeadService {
         }
 
         return leadMapper.toDto(savedLead);
+    }
+
+    /** Best-effort client name lookup for event logging — never throws. */
+    private String resolveClientName(String clientId) {
+        if (clientId == null || clientId.isBlank()) return null;
+        try {
+            return clientRepository.findById(Long.parseLong(clientId))
+                    .map(c -> c.getName())
+                    .orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.service;
 
 public interface CalendlyPollingService {
-    void pollAllAccounts();
+    /** Polls all accounts and returns the number of meetings synced. */
+    int pollAllAccounts();
 }

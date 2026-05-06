@@ -5,6 +5,7 @@ import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
 import com.neuroforged.leadsystem.exception.InvalidLeadException;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.mapper.LeadMapper;
 import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.ClientRepository;
@@ -54,6 +55,9 @@ class LeadServiceImplTest {
 
     @Mock
     private LeadSystemMetrics metrics;
+
+    @Mock
+    private BusinessEventLogger eventLogger;
 
     @InjectMocks
     private LeadServiceImpl leadService;
