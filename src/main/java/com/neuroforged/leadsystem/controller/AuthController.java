@@ -170,6 +170,7 @@ public class AuthController {
                 .append("; Max-Age=").append(maxAge);
         if (secure) {
             sb.append("; Secure");
+            sb.append("; Domain=alchemizeiq.com");
         }
         return sb.toString();
     }
