@@ -167,10 +167,10 @@ public class AuthController {
                 .append("; Path=/")
                 .append("; HttpOnly")
                 .append("; SameSite=Lax")
-                .append("; Max-Age=").append(maxAge);
+                .append("; Max-Age=").append(maxAge)
+                .append("; Domain=alchemizeiq.com");
         if (secure) {
             sb.append("; Secure");
-            sb.append("; Domain=alchemizeiq.com");
         }
         return sb.toString();
     }
