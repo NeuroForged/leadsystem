@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.security;
 
 import com.neuroforged.leadsystem.entity.User;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,9 @@ class JwtAuthenticationFilterTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private LeadSystemMetrics metrics;
 
     private JwtUtil jwtUtil;
 
