@@ -10,7 +10,13 @@ clients:
 
 scrape_configs:
 
-  # --- Full technical log (JSON) ---
+  # ── Prod: Full technical log (JSON) ─────────────────────────────────────────
+  #
+  # Labels (low cardinality, indexed):  app, env, level, clientId
+  # High-cardinality fields (req, userId) are queryable from the JSON body:
+  #   {app="leadsystem"} | json | req="abc123"
+  #   {app="leadsystem"} | json | clientId="3" | level="ERROR"
+  #
   - job_name: leadsystem-full
     static_configs:
       - targets:
@@ -22,25 +28,31 @@ scrape_configs:
           log_type: full
           __path__: /var/log/leadsystem/app.log
     pipeline_stages:
+      # Parse JSON — extract fields to promote as labels
       - json:
           expressions:
             level: level
-            logger: logger_name
-            req: req
             clientId: clientId
-            userId: userId
+            ts: ts
+      # Only low-cardinality fields become indexed Loki labels
       - labels:
           level:
-          logger:
-          req:
           clientId:
-          userId:
+      # Timestamp from the JSON 'ts' field (RFC3339Nano from Logstash encoder)
+      # Previously had source: timestamp — wrong field name; 'ts' is correct per logback-spring.xml
       - timestamp:
-          source: timestamp
+          source: ts
           format: RFC3339Nano
           action_on_failure: skip
 
-  # --- Business event log (plain text) ---
+  # ── Prod: Business event log (plain text) ───────────────────────────────────
+  #
+  # Format:  HH:mm:ss [MARKER]   ✓/✗  action  key=val  ...
+  # Example: 08:15:30 [LEAD]    ✓ received  client=Acme  email=x@y.com
+  #
+  # Extracted labels:  marker (LEAD/MEETING/WEBHOOK/SCRAPE/SCHED/AUTH/OAUTH)
+  #                    outcome (ok / fail)
+  #
   - job_name: leadsystem-events
     static_configs:
       - targets:
@@ -51,8 +63,19 @@ scrape_configs:
           env: prod
           log_type: events
           __path__: /var/log/leadsystem/events.log
+    pipeline_stages:
+      # Capture marker without brackets, and raw outcome symbol
+      - regex:
+          expression: '^\d{2}:\d{2}:\d{2} \[(?P<marker>[A-Z]+)\]\s+(?P<outcome>\S+)'
+      # Map ✓ → ok, anything else → fail
+      - template:
+          source: outcome
+          template: '{{ if eq .Value "✓" }}ok{{ else }}fail{{ end }}'
+      - labels:
+          marker:
+          outcome:
 
-  # --- Dev environment (api-dev.alchemizeiq.com) ---
+  # ── Dev: Full technical log (JSON) ──────────────────────────────────────────
   - job_name: leadsystem-full-dev
     static_configs:
       - targets:
@@ -67,17 +90,17 @@ scrape_configs:
       - json:
           expressions:
             level: level
-            logger: logger_name
-            req: req
             clientId: clientId
-            userId: userId
+            ts: ts
       - labels:
           level:
-          logger:
-          req:
           clientId:
-          userId:
+      - timestamp:
+          source: ts
+          format: RFC3339Nano
+          action_on_failure: skip
 
+  # ── Dev: Business event log (plain text) ─────────────────────────────────────
   - job_name: leadsystem-events-dev
     static_configs:
       - targets:
@@ -88,3 +111,12 @@ scrape_configs:
           env: dev
           log_type: events
           __path__: /var/log/leadsystem-dev/events.log
+    pipeline_stages:
+      - regex:
+          expression: '^\d{2}:\d{2}:\d{2} \[(?P<marker>[A-Z]+)\]\s+(?P<outcome>\S+)'
+      - template:
+          source: outcome
+          template: '{{ if eq .Value "✓" }}ok{{ else }}fail{{ end }}'
+      - labels:
+          marker:
+          outcome:
