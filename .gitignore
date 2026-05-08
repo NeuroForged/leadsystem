@@ -35,3 +35,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Claude worktrees & scratch files ###
+.claude/
+*.bak
+admin-wireframe*.html
