@@ -44,9 +44,9 @@ public class LeadNotificationServiceImpl implements LeadNotificationService {
             lead.getEmail(), lead.getCustomerType(), lead.getBusinessName(),
             lead.getBusinessType(), lead.getMonthlyLeads(), lead.getTrafficSource(),
             lead.getConversionRate(), lead.getCostPerLead(), lead.getClientValue(),
-            lead.getLeadChallenge(), lead.getClientId(), lead.getCreatedAt());
+            lead.getLeadChallenge(), lead.getClientIdStr(), lead.getCreatedAt());
 
-        String[] recipients = resolveRecipients(lead.getClientId());
+        String[] recipients = resolveRecipients(lead.getClientIdStr());
 
         try {
             emailService.sendLeadToMultiple(recipients, subject, body);

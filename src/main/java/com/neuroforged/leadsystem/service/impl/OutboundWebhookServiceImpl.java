@@ -85,7 +85,7 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
         payload.put("email", lead.getEmail());
         payload.put("name", lead.getFirstName() == null ? "" : lead.getFirstName());
         payload.put("phone", null);
-        payload.put("clientId", lead.getClientId());
+        payload.put("clientId", lead.getClientIdStr());
         payload.put("createdAt", lead.getCreatedAt() == null ? null : lead.getCreatedAt().toString());
         payload.put("status", lead.getStatus() == null ? null : lead.getStatus().toString());
         try {

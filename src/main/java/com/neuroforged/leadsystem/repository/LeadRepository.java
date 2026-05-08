@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificationExecutor<Lead> {
 
-    boolean existsByEmailAndClientId(String email, String clientId);
+    boolean existsByEmailAndClientIdStr(String email, String clientIdStr);
 
     boolean existsByBusinessName(String businessName);
 
@@ -24,22 +24,22 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
 
     Optional<Lead> findByBusinessName(String businessName);
 
-    List<Lead> findByClientId(String clientId);
+    List<Lead> findByClientIdStr(String clientIdStr);
 
-    Page<Lead> findByClientId(String clientId, Pageable pageable);
+    Page<Lead> findByClientIdStr(String clientIdStr, Pageable pageable);
 
     Page<Lead> findByStatus(LeadStatus status, Pageable pageable);
 
-    Page<Lead> findByClientIdAndStatus(String clientId, LeadStatus status, Pageable pageable);
+    Page<Lead> findByClientIdStrAndStatus(String clientIdStr, LeadStatus status, Pageable pageable);
 
-    Optional<Lead> findByEmailAndClientId(String email, String clientId);
+    Optional<Lead> findByEmailAndClientIdStr(String email, String clientIdStr);
 
     // ── Analytics aggregation queries ────────────────────────────────────────
 
     @Query(value = """
             SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') AS date, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
-            WHERE (:clientId IS NULL OR client_id = :clientId)
+            WHERE (:clientId IS NULL OR client_id_str = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             GROUP BY created_at::date
@@ -54,7 +54,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
             SELECT traffic_source AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE traffic_source IS NOT NULL
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
             GROUP BY traffic_source
             ORDER BY count DESC
             """, nativeQuery = true)
@@ -64,7 +64,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
             SELECT business_type AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE business_type IS NOT NULL
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
             GROUP BY business_type
             ORDER BY count DESC
             LIMIT 10
@@ -75,7 +75,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
             SELECT CAST(status AS TEXT) AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE status IS NOT NULL
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
             GROUP BY status
             """, nativeQuery = true)
     List<LabelCount> findCountsByStatus(@Param("clientId") String clientId);
@@ -90,7 +90,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
                 CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE lead_score IS NOT NULL
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
             GROUP BY label
             ORDER BY MIN(lead_score) DESC
             """, nativeQuery = true)
@@ -98,7 +98,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
 
     @Query(value = """
             SELECT COUNT(*) FROM lead
-            WHERE (:clientId IS NULL OR client_id = :clientId)
+            WHERE (:clientId IS NULL OR client_id_str = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
@@ -110,7 +110,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
     @Query(value = """
             SELECT COALESCE(AVG(lead_score), 0) FROM lead
             WHERE lead_score IS NOT NULL
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
@@ -122,7 +122,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
     @Query(value = """
             SELECT COUNT(*) FROM lead
             WHERE lead_score >= 80
-              AND (:clientId IS NULL OR client_id = :clientId)
+              AND (:clientId IS NULL OR client_id_str = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
