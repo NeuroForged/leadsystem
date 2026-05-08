@@ -106,7 +106,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         String cid = clientId != null ? String.valueOf(clientId) : null;
         var pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "leadScore"));
         var page = cid != null
-                ? leadRepository.findByClientId(cid, pageable)
+                ? leadRepository.findByClientIdStr(cid, pageable)
                 : leadRepository.findAll(pageable);
         return page.stream()
                 .filter(l -> l.getStatus() != LeadStatus.BOOKED && l.getStatus() != LeadStatus.CLOSED)
@@ -117,7 +117,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                         .email(l.getEmail())
                         .leadScore(l.getLeadScore())
                         .status(l.getStatus() != null ? l.getStatus().name() : null)
-                        .clientId(l.getClientId())
+                        .clientId(l.getClientIdStr())
                         .createdAt(l.getCreatedAt())
                         .build())
                 .toList();

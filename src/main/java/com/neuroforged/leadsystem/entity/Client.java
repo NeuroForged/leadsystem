@@ -43,6 +43,8 @@ public class Client {
     @Column(length = 200)
     private String webhookSecret;
 
+    @Column(length = 200)
+    private String firefliesWebhookSecret;
 
     @PrePersist
     private void generateApiKey() {

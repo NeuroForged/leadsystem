@@ -82,11 +82,11 @@ class LeadServiceImplTest {
     @Test
     void createLead_happyPath_returnsDto() {
         LeadRequestDTO dto = validRequest();
-        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientId(dto.getClientId()).build();
+        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientIdStr(dto.getClientId()).build();
         LeadResponseDTO responseDto = new LeadResponseDTO();
         responseDto.setEmail(dto.getEmail());
 
-        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(false);
+        when(leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(leadMapper.toDto(saved)).thenReturn(responseDto);
 
@@ -100,7 +100,7 @@ class LeadServiceImplTest {
     @Test
     void createLead_duplicateEmail_throwsDuplicateResourceException() {
         LeadRequestDTO dto = validRequest();
-        when(leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())).thenReturn(true);
+        when(leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())).thenReturn(true);
 
         assertThatThrownBy(() -> leadService.createLead(dto))
                 .isInstanceOf(DuplicateResourceException.class)

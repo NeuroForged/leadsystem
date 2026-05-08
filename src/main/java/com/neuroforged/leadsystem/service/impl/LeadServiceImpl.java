@@ -64,8 +64,9 @@ public class LeadServiceImpl implements LeadService {
 
         String clientName = resolveClientName(dto.getClientId());
 
-        if (leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())) {
+        if (leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())) {
             eventLogger.leadDuplicate(clientName, dto.getClientId(), dto.getEmail());
+            metrics.recordLeadDuplicate(dto.getClientId());
             throw new DuplicateResourceException(
                     "Lead with email " + dto.getEmail() + " already exists for clientId " + dto.getClientId());
         }
@@ -75,9 +76,9 @@ public class LeadServiceImpl implements LeadService {
         leadRoutingService.route(lead);
         Lead savedLead = leadRepository.save(lead);
 
-        metrics.recordLeadReceived(savedLead.getClientId());
+        metrics.recordLeadReceived(savedLead.getClientIdStr());
 
-        eventLogger.leadReceived(clientName, savedLead.getClientId(), savedLead.getEmail(),
+        eventLogger.leadReceived(clientName, savedLead.getClientIdStr(), savedLead.getEmail(),
                 savedLead.getLeadScore(),
                 savedLead.getRelevantKbSnippet() != null,
                 savedLead.getAssignedTo());
@@ -85,14 +86,18 @@ public class LeadServiceImpl implements LeadService {
         leadNotificationService.notifyNewLead(savedLead);
 
         try {
-            Long clientLongId = Long.parseLong(savedLead.getClientId());
-            Optional<Client> clientOpt = clientRepository.findById(clientLongId);
-            clientOpt.ifPresent(client -> outboundWebhookService.notifyWebhook(savedLead, client));
-
-            Map<String, String> ctx = buildLeadContext(savedLead);
-            notificationService.notify(clientLongId, NotificationEventType.NEW_LEAD, ctx);
-            if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
-                notificationService.notify(clientLongId, NotificationEventType.LEAD_SCORED_HIGH, ctx);
+            Client resolvedClient = savedLead.getClient();
+            if (resolvedClient == null && savedLead.getClientIdStr() != null) {
+                resolvedClient = clientRepository.findById(Long.parseLong(savedLead.getClientIdStr())).orElse(null);
+            }
+            if (resolvedClient != null) {
+                final Client c = resolvedClient;
+                outboundWebhookService.notifyWebhook(savedLead, c);
+                Map<String, String> ctx = buildLeadContext(savedLead);
+                notificationService.notify(c.getId(), NotificationEventType.NEW_LEAD, ctx);
+                if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
+                    notificationService.notify(c.getId(), NotificationEventType.LEAD_SCORED_HIGH, ctx);
+                }
             }
         } catch (Exception e) {
             log.warn("Outbound webhook/notification skipped for lead {} - client lookup failed: {}", savedLead.getId(), e.getMessage());
@@ -103,11 +108,15 @@ public class LeadServiceImpl implements LeadService {
 
     /** Best-effort client name lookup for event logging — never throws. */
     private String resolveClientName(String clientId) {
+        Client c = resolveClient(clientId);
+        return c != null ? c.getName() : null;
+    }
+
+    /** Best-effort Client entity lookup — returns null if id is unparseable or not found. */
+    private Client resolveClient(String clientId) {
         if (clientId == null || clientId.isBlank()) return null;
         try {
-            return clientRepository.findById(Long.parseLong(clientId))
-                    .map(c -> c.getName())
-                    .orElse(null);
+            return clientRepository.findById(Long.parseLong(clientId)).orElse(null);
         } catch (Exception e) {
             return null;
         }
@@ -133,7 +142,7 @@ public class LeadServiceImpl implements LeadService {
             throw new InvalidLeadException("Client ID must not be null or blank.");
         }
 
-        return leadRepository.findByClientId(clientId).stream()
+        return leadRepository.findByClientIdStr(clientId).stream()
                 .map(leadMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -160,7 +169,7 @@ public class LeadServiceImpl implements LeadService {
         ctx.put("Name", lead.getFirstName() != null ? lead.getFirstName() : "");
         ctx.put("Business", lead.getBusinessName() != null ? lead.getBusinessName() : "");
         ctx.put("Score", lead.getLeadScore() != null ? String.valueOf(lead.getLeadScore()) : "N/A");
-        ctx.put("Client ID", lead.getClientId());
+        ctx.put("Client ID", lead.getClientIdStr());
         return ctx;
     }
 
@@ -177,7 +186,8 @@ public class LeadServiceImpl implements LeadService {
                 .clientValue(dto.getClientValue())
                 .leadScore(dto.getLeadScore())
                 .leadChallenge(dto.getLeadChallenge())
-                .clientId(dto.getClientId())
+                .clientIdStr(dto.getClientId())
+                .client(resolveClient(dto.getClientId()))
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
                 .build();

@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.entity.CalendlyMeeting;
 import com.neuroforged.leadsystem.entity.CalendlyWebhookLog;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.MeetingStatus;
+import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.repository.CalendlyMeetingRepository;
 import com.neuroforged.leadsystem.repository.CalendlyWebhookLogRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
@@ -34,6 +35,8 @@ class CalendlyWebhookServiceImplTest {
     @Mock private ClientRepository clientRepository;
     @Mock private EmailService emailService;
     @Mock private ObjectMapper objectMapper;
+    @Mock private NotificationService notificationService;
+    @Mock private BusinessEventLogger eventLogger;
 
     @InjectMocks
     private CalendlyWebhookServiceImpl service;
