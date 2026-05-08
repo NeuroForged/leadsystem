@@ -231,7 +231,7 @@ public class SampleDataSeeder implements ApplicationRunner {
                 .clientValue(clientValue)
                 .leadScore(leadScore)
                 .leadChallenge(challenge)
-                .clientId(clientId)
+                .clientIdStr(clientId)
                 .status(status)
                 .createdAt(createdAt)
                 .build();
@@ -256,7 +256,7 @@ public class SampleDataSeeder implements ApplicationRunner {
         // Helper: find leads for a client that are BOOKED or CLOSED
         java.util.function.BiFunction<Client, LeadStatus, List<Lead>> clientLeads = (client, status) ->
                 leads.stream()
-                     .filter(l -> l.getClientId().equals(String.valueOf(client.getId())) && l.getStatus() == status)
+                     .filter(l -> l.getClientIdStr().equals(String.valueOf(client.getId())) && l.getStatus() == status)
                      .toList();
 
         // Peak Performance Gym
@@ -279,7 +279,7 @@ public class SampleDataSeeder implements ApplicationRunner {
         }
         // A couple of no-shows and cancellations for realism
         List<Lead> agencyQualified = leads.stream()
-                .filter(l -> l.getClientId().equals(String.valueOf(agency.getId())) && l.getStatus() == LeadStatus.QUALIFIED)
+                .filter(l -> l.getClientIdStr().equals(String.valueOf(agency.getId())) && l.getStatus() == LeadStatus.QUALIFIED)
                 .limit(2).toList();
         if (!agencyQualified.isEmpty()) {
             meetings.add(meeting(agency, agencyQualified.get(0), "Cancelled Call - " + agencyQualified.get(0).getBusinessName(), now.minusDays(8), 30, MeetingStatus.CANCELLED, utc));

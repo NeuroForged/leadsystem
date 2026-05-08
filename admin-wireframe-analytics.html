@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alchemize Admin — Analytics Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#4f63d2', 600: '#3d4fc0' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex">
+
+  <!-- Sidebar -->
+  <aside class="w-56 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
+    <div class="px-5 py-4 border-b border-gray-800">
+      <span class="text-brand-500 font-bold text-lg tracking-tight">Alchemize</span>
+      <span class="text-gray-500 text-xs block">Admin</span>
+    </div>
+    <nav class="flex-1 py-4 space-y-1 px-2">
+      <a href="admin-wireframe.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Leads
+      </a>
+      <a href="admin-wireframe-clients.html" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Clients
+      </a>
+      <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Meetings
+      </a>
+      <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+        Scraper
+      </a>
+      <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-md bg-brand-500/10 text-brand-400 text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Analytics
+      </a>
+    </nav>
+    <div class="px-4 py-4 border-t border-gray-800">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs font-bold">JW</div>
+        <div>
+          <p class="text-xs font-medium text-gray-200">Josh White</p>
+          <p class="text-xs text-gray-500">Admin</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+      <div>
+        <h1 class="text-sm font-semibold text-gray-100">Analytics</h1>
+        <p class="text-xs text-gray-500">All clients · April 2026</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Client filter -->
+        <select class="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-brand-500">
+          <option>All clients</option>
+          <option>Acme Corp</option>
+          <option>BluePeak Digital</option>
+          <option>Stride Fitness</option>
+        </select>
+        <!-- Date range -->
+        <div class="flex rounded-md border border-gray-700 overflow-hidden text-xs">
+          <button class="px-3 py-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700">7d</button>
+          <button class="px-3 py-1.5 bg-brand-500/15 text-brand-400 border-x border-gray-700">30d</button>
+          <button class="px-3 py-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700">90d</button>
+          <button class="px-3 py-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700">All</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Scrollable content -->
+    <div class="flex-1 overflow-auto p-6 space-y-6">
+
+      <!-- KPI cards -->
+      <div class="grid grid-cols-5 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+          <p class="text-xs text-gray-500 mb-1">Total leads</p>
+          <p class="text-2xl font-bold text-gray-100">143</p>
+          <p class="text-xs text-green-400 mt-1">↑ 18% vs last period</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+          <p class="text-xs text-gray-500 mb-1">Meetings booked</p>
+          <p class="text-2xl font-bold text-gray-100">29</p>
+          <p class="text-xs text-green-400 mt-1">↑ 7% vs last period</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+          <p class="text-xs text-gray-500 mb-1">Conversion rate</p>
+          <p class="text-2xl font-bold text-gray-100">20.3%</p>
+          <p class="text-xs text-red-400 mt-1">↓ 2% vs last period</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+          <p class="text-xs text-gray-500 mb-1">Avg lead score</p>
+          <p class="text-2xl font-bold text-yellow-400">67</p>
+          <p class="text-xs text-gray-500 mt-1">→ unchanged</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+          <p class="text-xs text-gray-500 mb-1">High-quality leads</p>
+          <p class="text-2xl font-bold text-green-400">51</p>
+          <p class="text-xs text-gray-500 mt-1">Score ≥ 75 · 36%</p>
+        </div>
+      </div>
+
+      <!-- Row 2: Lead volume chart + Score distribution -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Lead volume over time (spans 2 cols) -->
+        <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-100">Lead volume</h2>
+              <p class="text-xs text-gray-500">Daily leads over the last 30 days</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-brand-500 inline-block"></span>All clients</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>Acme</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span>BluePeak</span>
+            </div>
+          </div>
+          <div class="h-48">
+            <canvas id="volumeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Score distribution -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="mb-4">
+            <h2 class="text-sm font-semibold text-gray-100">Score distribution</h2>
+            <p class="text-xs text-gray-500">Across all leads this period</p>
+          </div>
+          <div class="h-48">
+            <canvas id="scoreChart"></canvas>
+          </div>
+          <div class="flex justify-between mt-3 text-xs text-gray-500">
+            <span class="text-red-400">Low (0–49)</span>
+            <span class="text-yellow-400">Mid (50–74)</span>
+            <span class="text-green-400">High (75+)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Traffic sources + Per-client table -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Traffic sources donut -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="mb-4">
+            <h2 class="text-sm font-semibold text-gray-100">Traffic sources</h2>
+            <p class="text-xs text-gray-500">Where leads are coming from</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-32 h-32 shrink-0">
+              <canvas id="sourceChart"></canvas>
+            </div>
+            <div class="space-y-2 text-xs flex-1">
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-500 inline-block"></span>Google</span>
+                <span class="text-gray-300 font-medium">41%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-400 inline-block"></span>Organic</span>
+                <span class="text-gray-300 font-medium">24%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>Facebook</span>
+                <span class="text-gray-300 font-medium">18%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-teal-400 inline-block"></span>LinkedIn</span>
+                <span class="text-gray-300 font-medium">11%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-gray-500 inline-block"></span>Other</span>
+                <span class="text-gray-300 font-medium">6%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-client breakdown table (spans 2) -->
+        <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-100">Per-client breakdown</h2>
+              <p class="text-xs text-gray-500">Performance comparison</p>
+            </div>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-gray-800">
+                <th class="text-left text-gray-500 font-medium pb-2.5">Client</th>
+                <th class="text-right text-gray-500 font-medium pb-2.5">Leads</th>
+                <th class="text-right text-gray-500 font-medium pb-2.5">Meetings</th>
+                <th class="text-right text-gray-500 font-medium pb-2.5">Conversion</th>
+                <th class="text-right text-gray-500 font-medium pb-2.5">Avg score</th>
+                <th class="text-left text-gray-500 font-medium pb-2.5 pl-4">Volume</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/60">
+              <tr>
+                <td class="py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-purple-400 text-xs font-bold">A</div>
+                    <span class="text-gray-200 font-medium">Acme Corp</span>
+                  </div>
+                </td>
+                <td class="py-3 text-right text-gray-300">84</td>
+                <td class="py-3 text-right text-green-400">17</td>
+                <td class="py-3 text-right text-gray-300">20.2%</td>
+                <td class="py-3 text-right text-yellow-400">71</td>
+                <td class="py-3 pl-4">
+                  <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-purple-500 rounded-full" style="width:58.7%"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs font-bold">B</div>
+                    <span class="text-gray-200 font-medium">BluePeak Digital</span>
+                  </div>
+                </td>
+                <td class="py-3 text-right text-gray-300">41</td>
+                <td class="py-3 text-right text-green-400">6</td>
+                <td class="py-3 text-right text-gray-300">14.6%</td>
+                <td class="py-3 text-right text-yellow-400">58</td>
+                <td class="py-3 pl-4">
+                  <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-orange-400 rounded-full" style="width:28.7%"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded bg-teal-500/20 flex items-center justify-center text-teal-400 text-xs font-bold">S</div>
+                    <span class="text-gray-200 font-medium">Stride Fitness</span>
+                  </div>
+                </td>
+                <td class="py-3 text-right text-gray-300">18</td>
+                <td class="py-3 text-right text-gray-500">—</td>
+                <td class="py-3 text-right text-gray-500">—</td>
+                <td class="py-3 text-right text-yellow-400">63</td>
+                <td class="py-3 pl-4">
+                  <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-teal-400 rounded-full" style="width:12.6%"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Funnel strip -->
+          <div class="mt-5 pt-4 border-t border-gray-800">
+            <p class="text-xs text-gray-500 mb-3">Lead pipeline — all clients</p>
+            <div class="flex items-center gap-0">
+              <div class="flex-1 bg-gray-700/60 rounded-l-full h-7 flex items-center justify-center text-xs font-medium text-gray-200 relative overflow-hidden">
+                <div class="absolute inset-0 bg-brand-500/20"></div>
+                <span class="relative z-10">New · 58</span>
+              </div>
+              <svg class="w-3 h-7 text-gray-700 shrink-0" viewBox="0 0 12 28" fill="none"><path d="M0 0 L12 14 L0 28" fill="#374151"/></svg>
+              <div class="flex-1 bg-gray-700/60 h-7 flex items-center justify-center text-xs font-medium text-gray-200 relative overflow-hidden">
+                <div class="absolute inset-0 bg-yellow-500/15"></div>
+                <span class="relative z-10">Contacted · 31</span>
+              </div>
+              <svg class="w-3 h-7 text-gray-700 shrink-0" viewBox="0 0 12 28" fill="none"><path d="M0 0 L12 14 L0 28" fill="#374151"/></svg>
+              <div class="flex-1 bg-gray-700/60 h-7 flex items-center justify-center text-xs font-medium text-gray-200 relative overflow-hidden">
+                <div class="absolute inset-0 bg-orange-500/15"></div>
+                <span class="relative z-10">Qualified · 25</span>
+              </div>
+              <svg class="w-3 h-7 text-gray-700 shrink-0" viewBox="0 0 12 28" fill="none"><path d="M0 0 L12 14 L0 28" fill="#374151"/></svg>
+              <div class="flex-1 bg-gray-700/60 rounded-r-full h-7 flex items-center justify-center text-xs font-medium text-gray-200 relative overflow-hidden">
+                <div class="absolute inset-0 bg-green-500/20"></div>
+                <span class="relative z-10">Booked · 29</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 4: Business type breakdown + Top leads -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Business type bar -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="mb-4">
+            <h2 class="text-sm font-semibold text-gray-100">Business types</h2>
+            <p class="text-xs text-gray-500">Lead volume by industry</p>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">SaaS</span><span class="text-gray-300">38</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-brand-500 rounded-full" style="width:76%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">Health / Fitness</span><span class="text-gray-300">29</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-teal-500 rounded-full" style="width:58%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">Legal</span><span class="text-gray-300">21</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-purple-500 rounded-full" style="width:42%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">Construction</span><span class="text-gray-300">18</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-orange-400 rounded-full" style="width:36%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">Finance</span><span class="text-gray-300">14</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" style="width:28%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-400">Other</span><span class="text-gray-300">23</span></div>
+              <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden"><div class="h-full bg-gray-600 rounded-full" style="width:46%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top leads by score -->
+        <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-100">Top leads this period</h2>
+              <p class="text-xs text-gray-500">Highest scoring · not yet booked</p>
+            </div>
+            <a href="admin-wireframe.html" class="text-xs text-brand-400 hover:underline">View all →</a>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 cursor-pointer">
+              <span class="text-xs font-bold text-green-400 w-6 text-right">94</span>
+              <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:94%"></div></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-200 truncate">Momentum Media</p>
+                <p class="text-xs text-gray-500 truncate">sarah@momentum.io · SaaS</p>
+              </div>
+              <span class="text-xs bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded shrink-0">Acme</span>
+              <span class="text-xs text-gray-500 shrink-0">Today</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 cursor-pointer">
+              <span class="text-xs font-bold text-green-400 w-6 text-right">91</span>
+              <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:91%"></div></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-200 truncate">Peak Performance PT</p>
+                <p class="text-xs text-gray-500 truncate">dan@peakpt.co.uk · Fitness</p>
+              </div>
+              <span class="text-xs bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded shrink-0">Stride</span>
+              <span class="text-xs text-gray-500 shrink-0">Yesterday</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 cursor-pointer">
+              <span class="text-xs font-bold text-green-400 w-6 text-right">87</span>
+              <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:87%"></div></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-200 truncate">Clearwater Legal</p>
+                <p class="text-xs text-gray-500 truncate">info@clearwaterlegal.com · Legal</p>
+              </div>
+              <span class="text-xs bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded shrink-0">BluePeak</span>
+              <span class="text-xs text-gray-500 shrink-0">28 Apr</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 cursor-pointer">
+              <span class="text-xs font-bold text-green-400 w-6 text-right">83</span>
+              <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:83%"></div></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-200 truncate">Vantage Recruitment</p>
+                <p class="text-xs text-gray-500 truncate">hire@vantage.io · HR Tech</p>
+              </div>
+              <span class="text-xs bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded shrink-0">Acme</span>
+              <span class="text-xs text-gray-500 shrink-0">27 Apr</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 cursor-pointer">
+              <span class="text-xs font-bold text-green-400 w-6 text-right">79</span>
+              <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:79%"></div></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-200 truncate">Greenfield Roofing</p>
+                <p class="text-xs text-gray-500 truncate">james@greenfieldroofing.com · Construction</p>
+              </div>
+              <span class="text-xs bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded shrink-0">Acme</span>
+              <span class="text-xs text-gray-500 shrink-0">27 Apr</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const gridColor = 'rgba(255,255,255,0.05)';
+    const tickColor = '#6b7280';
+
+    // Volume chart
+    const days = Array.from({length: 30}, (_, i) => {
+      const d = new Date('2026-04-01');
+      d.setDate(d.getDate() + i);
+      return d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+    });
+    const totalVol = [3,5,4,6,2,7,8,5,4,6,7,9,6,5,8,10,7,6,9,11,8,7,6,9,8,10,12,9,8,7];
+    const acmeVol  = [2,3,2,4,1,4,5,3,2,4,4,6,3,3,5, 6,4,3,5, 7,4,4,3,5,4, 6, 7,5,4,4];
+    const bpVol    = [1,2,2,2,1,3,3,2,2,2,3,3,3,2,3, 4,3,3,4, 4,4,3,3,4,4, 4, 5,4,4,3];
+
+    new Chart(document.getElementById('volumeChart'), {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [
+          { label: 'All', data: totalVol, borderColor: '#4f63d2', backgroundColor: 'rgba(79,99,210,0.08)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+          { label: 'Acme', data: acmeVol, borderColor: '#a855f7', backgroundColor: 'transparent', fill: false, tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3] },
+          { label: 'BluePeak', data: bpVol, borderColor: '#fb923c', backgroundColor: 'transparent', fill: false, tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3] },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 8, font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, min: 0 }
+        }
+      }
+    });
+
+    // Score histogram
+    new Chart(document.getElementById('scoreChart'), {
+      type: 'bar',
+      data: {
+        labels: ['0–9','10–19','20–29','30–39','40–49','50–59','60–69','70–79','80–89','90–99'],
+        datasets: [{
+          data: [2, 3, 4, 6, 8, 18, 32, 28, 29, 13],
+          backgroundColor: [
+            '#ef4444','#ef4444','#ef4444','#ef4444','#f97316',
+            '#eab308','#eab308','#22c55e','#22c55e','#22c55e'
+          ],
+          borderRadius: 3,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: ctx => `Score ${ctx[0].label}` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 9 } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, min: 0 }
+        }
+      }
+    });
+
+    // Source donut
+    new Chart(document.getElementById('sourceChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Google', 'Organic', 'Facebook', 'LinkedIn', 'Other'],
+        datasets: [{
+          data: [41, 24, 18, 11, 6],
+          backgroundColor: ['#4f63d2','#a855f7','#fb923c','#2dd4bf','#6b7280'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } }
+      }
+    });
+  </script>
+</body>
+</html>

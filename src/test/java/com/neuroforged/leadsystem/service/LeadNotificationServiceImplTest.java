@@ -41,7 +41,7 @@ class LeadNotificationServiceImplTest {
         return Lead.builder()
                 .id(1L)
                 .email("lead@example.com")
-                .clientId(clientId)
+                .clientIdStr(clientId)
                 .businessName("Acme")
                 .build();
     }

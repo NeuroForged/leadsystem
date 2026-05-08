@@ -1,11 +1,7 @@
 package com.neuroforged.leadsystem.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
-import com.neuroforged.leadsystem.logging.BusinessEventLogger;
-import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +13,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Service
 @Slf4j
@@ -28,25 +21,16 @@ import java.util.Map;
 public class OutboundWebhookServiceImpl implements OutboundWebhookService {
 
     private final WebClient.Builder webClientBuilder;
-    private final ObjectMapper objectMapper;
-    private final BusinessEventLogger eventLogger;
-    private final LeadSystemMetrics metrics;
 
     @Async
     @Override
     public void notifyWebhook(Lead lead, Client client) {
         String webhookUrl = client.getWebhookUrl();
-        String clientIdStr = String.valueOf(client.getId());
         if (webhookUrl == null || webhookUrl.isBlank()) {
-            metrics.recordOutboundWebhook(clientIdStr, "skipped");
             return;
         }
 
         String payload = buildPayload(lead);
-        if (payload == null) {
-            log.warn("Webhook skipped for lead {} — payload serialization failed", lead.getId());
-            return;
-        }
 
         WebClient webClient = webClientBuilder.build();
 
@@ -60,40 +44,33 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
             requestSpec = requestSpec.header("X-Alchemize-Signature", signature);
         }
 
-        long start = Instant.now().toEpochMilli();
         try {
-            requestSpec
+            String status = requestSpec
                     .bodyValue(payload)
                     .retrieve()
                     .toBodilessEntity()
                     .timeout(Duration.ofSeconds(5))
+                    .map(response -> response.getStatusCode().toString())
                     .block();
-            long latency = Instant.now().toEpochMilli() - start;
-            metrics.recordOutboundWebhook(clientIdStr, "success");
-            eventLogger.outboundWebhookDelivered(client.getName(), webhookUrl, latency);
-            log.debug("Outbound webhook delivered to {} for lead {} latency={}ms", webhookUrl, lead.getId(), latency);
+            log.info("Webhook delivered to {} for lead {} - status {}", webhookUrl, lead.getId(), status);
         } catch (Exception e) {
-            log.warn("Outbound webhook delivery failed to {} for lead {}: {}", webhookUrl, lead.getId(), e.getMessage());
-            metrics.recordOutboundWebhook(clientIdStr, "failure");
-            eventLogger.outboundWebhookFailed(client.getName(), webhookUrl, 0, 1, 1);
+            log.warn("Webhook delivery failed to {} for lead {}: {}", webhookUrl, lead.getId(), e.getMessage());
         }
     }
 
     private String buildPayload(Lead lead) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("leadId", lead.getId());
-        payload.put("email", lead.getEmail());
-        payload.put("name", lead.getFirstName() == null ? "" : lead.getFirstName());
-        payload.put("phone", null);
-        payload.put("clientId", lead.getClientIdStr());
-        payload.put("createdAt", lead.getCreatedAt() == null ? null : lead.getCreatedAt().toString());
-        payload.put("status", lead.getStatus() == null ? null : lead.getStatus().toString());
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize webhook payload for lead {}", lead.getId(), e);
-            return null;
-        }
+        return "{\"leadId\":" + lead.getId()
+                + ",\"email\":\"" + lead.getEmail() + "\""
+                + ",\"name\":\"" + nullSafe(lead.getFirstName()) + "\""
+                + ",\"phone\":null"
+                + ",\"clientId\":\"" + lead.getClientId() + "\""
+                + ",\"createdAt\":\"" + lead.getCreatedAt() + "\""
+                + ",\"status\":\"" + lead.getStatus() + "\""
+                + "}";
+    }
+
+    private String nullSafe(String value) {
+        return value == null ? "" : value;
     }
 
     private String hmacSha256(String data, String secret) {

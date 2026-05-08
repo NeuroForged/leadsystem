@@ -24,9 +24,9 @@ public class LeadRoutingServiceImpl implements LeadRoutingService {
     public void route(Lead lead) {
         Long clientLongId;
         try {
-            clientLongId = Long.parseLong(lead.getClientId());
+            clientLongId = Long.parseLong(lead.getClientIdStr());
         } catch (NumberFormatException e) {
-            log.warn("LeadRouting: cannot parse clientId '{}' — skipping", lead.getClientId());
+            log.warn("LeadRouting: cannot parse clientId '{}' — skipping", lead.getClientIdStr());
             return;
         }
 
@@ -39,7 +39,7 @@ public class LeadRoutingServiceImpl implements LeadRoutingService {
             String fieldValue = fieldValues.get(rule.getMatchField().toLowerCase());
             if (fieldValue != null && fieldValue.equalsIgnoreCase(rule.getMatchValue())) {
                 lead.setAssignedTo(rule.getAssignTo());
-                metrics.recordRoutingMatched(rule.getId().toString(), lead.getClientId());
+                metrics.recordRoutingMatched(rule.getId().toString(), lead.getClientIdStr());
                 log.debug("LeadRouting: lead id={} assigned to '{}' via rule id={}", lead.getId(), rule.getAssignTo(), rule.getId());
                 return;
             }

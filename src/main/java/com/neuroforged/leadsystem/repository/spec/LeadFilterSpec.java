@@ -12,7 +12,7 @@ public class LeadFilterSpec {
         return (root, query, cb) ->
                 (clientId == null || clientId.isBlank())
                         ? cb.conjunction()
-                        : cb.equal(root.get("clientId"), clientId);
+                        : cb.equal(root.get("clientIdStr"), clientId);
     }
 
     public static Specification<Lead> withStatus(LeadStatus status) {

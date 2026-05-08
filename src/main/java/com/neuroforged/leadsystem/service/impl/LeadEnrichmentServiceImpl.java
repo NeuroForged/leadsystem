@@ -27,7 +27,7 @@ public class LeadEnrichmentServiceImpl implements LeadEnrichmentService {
     public void enrich(Lead lead) {
         String clientId;
         try {
-            clientId = lead.getClientId();
+            clientId = lead.getClientIdStr();
             Long clientLongId = Long.parseLong(clientId);
 
             String query = buildQuery(lead);
@@ -51,7 +51,7 @@ public class LeadEnrichmentServiceImpl implements LeadEnrichmentService {
                     snippet.length(), results.get(0).getFilename(), lead.getId());
 
         } catch (NumberFormatException e) {
-            log.warn("LeadEnrichment: could not parse clientId '{}' — skipping", lead.getClientId());
+            log.warn("LeadEnrichment: could not parse clientId '{}' — skipping", lead.getClientIdStr());
             metrics.recordEnrichmentOutcome("skipped");
         } catch (Exception e) {
             log.warn("LeadEnrichment: failed for lead id={}: {}", lead.getId(), e.getMessage());
