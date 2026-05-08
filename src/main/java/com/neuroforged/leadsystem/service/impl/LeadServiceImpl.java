@@ -66,6 +66,7 @@ public class LeadServiceImpl implements LeadService {
 
         if (leadRepository.existsByEmailAndClientId(dto.getEmail(), dto.getClientId())) {
             eventLogger.leadDuplicate(clientName, dto.getClientId(), dto.getEmail());
+            metrics.recordLeadDuplicate(dto.getClientId());
             throw new DuplicateResourceException(
                     "Lead with email " + dto.getEmail() + " already exists for clientId " + dto.getClientId());
         }

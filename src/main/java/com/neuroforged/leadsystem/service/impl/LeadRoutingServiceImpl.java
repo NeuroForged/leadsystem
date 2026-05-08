@@ -2,6 +2,7 @@ package com.neuroforged.leadsystem.service.impl;
 
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadRoutingRule;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.LeadRoutingRuleRepository;
 import com.neuroforged.leadsystem.service.LeadRoutingService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class LeadRoutingServiceImpl implements LeadRoutingService {
 
     private final LeadRoutingRuleRepository routingRuleRepository;
+    private final LeadSystemMetrics metrics;
 
     @Override
     public void route(Lead lead) {
@@ -37,6 +39,7 @@ public class LeadRoutingServiceImpl implements LeadRoutingService {
             String fieldValue = fieldValues.get(rule.getMatchField().toLowerCase());
             if (fieldValue != null && fieldValue.equalsIgnoreCase(rule.getMatchValue())) {
                 lead.setAssignedTo(rule.getAssignTo());
+                metrics.recordRoutingMatched(rule.getId().toString(), lead.getClientId());
                 log.debug("LeadRouting: lead id={} assigned to '{}' via rule id={}", lead.getId(), rule.getAssignTo(), rule.getId());
                 return;
             }

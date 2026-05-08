@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.logging.BusinessEventLogger;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +30,15 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
     private final BusinessEventLogger eventLogger;
+    private final LeadSystemMetrics metrics;
 
     @Async
     @Override
     public void notifyWebhook(Lead lead, Client client) {
         String webhookUrl = client.getWebhookUrl();
+        String clientIdStr = String.valueOf(client.getId());
         if (webhookUrl == null || webhookUrl.isBlank()) {
+            metrics.recordOutboundWebhook(clientIdStr, "skipped");
             return;
         }
 
@@ -65,10 +69,12 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
                     .timeout(Duration.ofSeconds(5))
                     .block();
             long latency = Instant.now().toEpochMilli() - start;
+            metrics.recordOutboundWebhook(clientIdStr, "success");
             eventLogger.outboundWebhookDelivered(client.getName(), webhookUrl, latency);
             log.debug("Outbound webhook delivered to {} for lead {} latency={}ms", webhookUrl, lead.getId(), latency);
         } catch (Exception e) {
             log.warn("Outbound webhook delivery failed to {} for lead {}: {}", webhookUrl, lead.getId(), e.getMessage());
+            metrics.recordOutboundWebhook(clientIdStr, "failure");
             eventLogger.outboundWebhookFailed(client.getName(), webhookUrl, 0, 1, 1);
         }
     }
