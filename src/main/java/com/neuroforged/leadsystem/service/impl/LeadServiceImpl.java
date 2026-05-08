@@ -123,9 +123,10 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
-    public PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, Pageable pageable) {
+    public PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, String search, Pageable pageable) {
         var spec = LeadFilterSpec.withClientId(clientId)
-                .and(LeadFilterSpec.withStatus(status));
+                .and(LeadFilterSpec.withStatus(status))
+                .and(LeadFilterSpec.withSearch(search));
         return PagedResponse.from(leadRepository.findAll(spec, pageable).map(leadMapper::toDto));
     }
 
