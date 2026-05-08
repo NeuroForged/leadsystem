@@ -16,4 +16,8 @@ public interface CalendlyMeetingRepository extends JpaRepository<CalendlyMeeting
     Page<CalendlyMeeting> findByClient_IdAndStartTimeBetween(Long clientId, ZonedDateTime from, ZonedDateTime to, Pageable pageable);
     List<CalendlyMeeting> findByInviteeEmail(String email);
     List<CalendlyMeeting> findByClient_Id(Long clientId);
+
+    /** For Fireflies matching: find meetings with matching invitee email in a time window (±10 min). */
+    List<CalendlyMeeting> findByInviteeEmailAndStartTimeBetween(
+            String inviteeEmail, ZonedDateTime from, ZonedDateTime to);
 }

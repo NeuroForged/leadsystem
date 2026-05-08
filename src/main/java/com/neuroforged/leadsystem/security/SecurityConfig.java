@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/calendly/authorize").authenticated()
                         .requestMatchers("/api/calendly/webhook").permitAll()
                         .requestMatchers("/api/calendly/oauth/callback").permitAll()
+                        .requestMatchers("/api/fireflies/webhook/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(apiTokenFilter, UsernamePasswordAuthenticationFilter.class)
