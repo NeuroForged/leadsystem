@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
 import com.neuroforged.leadsystem.entity.CalendlyAccount;
 import com.neuroforged.leadsystem.entity.CalendlyMeeting;
 import com.neuroforged.leadsystem.entity.MeetingStatus;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.CalendlyAccountRepository;
 import com.neuroforged.leadsystem.repository.CalendlyMeetingRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
@@ -33,6 +34,7 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
     private final ClientRepository clientRepository;
     private final CalendlyApiClient apiClient;
     private final CalendlyTokenRefreshService tokenRefreshService;
+    private final LeadSystemMetrics metrics;
 
     @Override
     public int pollAllAccounts() {
@@ -47,7 +49,11 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
         AtomicInteger synced = new AtomicInteger(0);
         for (CalendlyAccount account : accounts) {
             try {
-                synced.addAndGet(pollAccount(account));
+                int accountSynced = pollAccount(account);
+                synced.addAndGet(accountSynced);
+                if (accountSynced > 0) {
+                    metrics.recordCalendlyPollSynced(account.getClientId().toString(), accountSynced);
+                }
             } catch (Exception ex) {
                 log.error("Polling failed for clientId={}: {}", account.getClientId(), ex.getMessage(), ex);
             }

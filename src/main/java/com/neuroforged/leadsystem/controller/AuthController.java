@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.dto.ChangePasswordRequest;
 import com.neuroforged.leadsystem.dto.UserInfoResponse;
 import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.logging.BusinessEventLogger;
+import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import com.neuroforged.leadsystem.security.CustomUserPrincipal;
 import com.neuroforged.leadsystem.security.JwtUtil;
@@ -43,6 +44,7 @@ public class AuthController {
     private final AuthService authService;
     private final Environment environment;
     private final BusinessEventLogger eventLogger;
+    private final LeadSystemMetrics metrics;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request,
@@ -68,6 +70,7 @@ public class AuthController {
             eventLogger.authSuccess(request.getEmail());
             return ResponseEntity.ok(new AuthenticationResponse(accessToken));
         } catch (AuthenticationException e) {
+            metrics.recordAuthFailure("bad_credentials");
             eventLogger.authFailed("bad_credentials", request.getEmail(), null);
             log.debug("Login failed for email={}: {}", request.getEmail(), e.getMessage());
             return ResponseEntity.status(401).body("Invalid email or password");
@@ -78,6 +81,7 @@ public class AuthController {
     public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractCookie(request, "alchemize_rt");
         if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            metrics.recordAuthFailure("invalid_token");
             return ResponseEntity.status(401).body("Missing or invalid refresh token");
         }
 
@@ -87,15 +91,18 @@ public class AuthController {
             tokenType = jwtUtil.extractTokenType(refreshToken);
             email = jwtUtil.extractUsername(refreshToken);
         } catch (Exception e) {
+            metrics.recordAuthFailure("invalid_token");
             return ResponseEntity.status(401).body("Invalid refresh token");
         }
 
         if (!"refresh".equals(tokenType)) {
+            metrics.recordAuthFailure("invalid_token_type");
             return ResponseEntity.status(401).body("Invalid token type");
         }
 
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
+            metrics.recordAuthFailure("user_not_found");
             return ResponseEntity.status(401).body("User not found");
         }
 
