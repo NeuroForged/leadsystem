@@ -21,4 +21,15 @@ public class LeadFilterSpec {
                         ? cb.conjunction()
                         : cb.equal(root.get("status"), status);
     }
+
+    public static Specification<Lead> withSearch(String search) {
+        return (root, query, cb) -> {
+            if (search == null || search.isBlank()) return cb.conjunction();
+            String pattern = "%" + search.toLowerCase() + "%";
+            return cb.or(
+                    cb.like(cb.lower(root.get("businessName")), pattern),
+                    cb.like(cb.lower(root.get("email")), pattern)
+            );
+        };
+    }
 }

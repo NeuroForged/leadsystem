@@ -58,19 +58,27 @@ public class LeadController {
     public ResponseEntity<PagedResponse<LeadResponseDTO>> getLeads(
             @RequestParam(required = false) String clientId,
             @RequestParam(required = false) LeadStatus status,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
 
-        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
-            throw new InvalidLeadException("Invalid sortBy field '" + sortBy + "'. Allowed: " + ALLOWED_SORT_FIELDS);
-        }
+        Sort resolvedSort = parseSort(sort);
         String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-        log.info("Fetching leads -- clientId={}, status={}, page={}, size={}", resolvedClientId, status, page, size);
-        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, pageable));
+        Pageable pageable = PageRequest.of(page, size, resolvedSort);
+        log.info("Fetching leads -- clientId={}, status={}, search={}, page={}, size={}, sort={}", resolvedClientId, status, search, page, size, sort);
+        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, search, pageable));
+    }
+
+    private Sort parseSort(String sort) {
+        if (sort == null || sort.isBlank()) return Sort.by("createdAt").descending();
+        String[] parts = sort.split(",", 2);
+        String field = parts[0].trim();
+        String dir   = parts.length > 1 ? parts[1].trim() : "desc";
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            throw new InvalidLeadException("Invalid sort field '" + field + "'. Allowed: " + ALLOWED_SORT_FIELDS);
+        }
+        return dir.equalsIgnoreCase("asc") ? Sort.by(field).ascending() : Sort.by(field).descending();
     }
 
     @PatchMapping("/{id}/status")
