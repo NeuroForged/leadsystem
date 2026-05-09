@@ -59,6 +59,8 @@ public class LeadController {
             @RequestParam(required = false) String clientId,
             @RequestParam(required = false) LeadStatus status,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
@@ -66,8 +68,9 @@ public class LeadController {
         Sort resolvedSort = parseSort(sort);
         String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
         Pageable pageable = PageRequest.of(page, size, resolvedSort);
-        log.info("Fetching leads -- clientId={}, status={}, search={}, page={}, size={}, sort={}", resolvedClientId, status, search, page, size, sort);
-        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, search, pageable));
+        log.info("Fetching leads -- clientId={}, status={}, search={}, from={}, to={}, page={}, size={}, sort={}",
+                resolvedClientId, status, search, from, to, page, size, sort);
+        return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, search, from, to, pageable));
     }
 
     private Sort parseSort(String sort) {
