@@ -89,43 +89,6 @@ class AuthPrincipalUtilTest {
                 .hasMessageContaining("no associated clientId");
     }
 
-    // ----- resolveStringClientIdForCaller(String) -----
-
-    @Test
-    void resolveStringClientIdForCaller_admin_passesThroughAnyValue() {
-        authenticate("ADMIN", null);
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller(null)).isNull();
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller("acme")).isEqualTo("acme");
-    }
-
-    @Test
-    void resolveStringClientIdForCaller_client_matchingReturnsOwn() {
-        authenticate("CLIENT", 7L);
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller("7")).isEqualTo("7");
-    }
-
-    @Test
-    void resolveStringClientIdForCaller_client_nullOrBlankReturnsOwn() {
-        authenticate("CLIENT", 7L);
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller(null)).isEqualTo("7");
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller("")).isEqualTo("7");
-        assertThat(AuthPrincipalUtil.resolveStringClientIdForCaller("   ")).isEqualTo("7");
-    }
-
-    @Test
-    void resolveStringClientIdForCaller_client_mismatchedThrows() {
-        authenticate("CLIENT", 7L);
-        assertThatThrownBy(() -> AuthPrincipalUtil.resolveStringClientIdForCaller("8"))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void resolveStringClientIdForCaller_clientWithNoClientId_throws() {
-        authenticate("CLIENT", null);
-        assertThatThrownBy(() -> AuthPrincipalUtil.resolveStringClientIdForCaller("anything"))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
     // ----- assertCanAccessClient(Long) -----
 
     @Test
@@ -162,32 +125,4 @@ class AuthPrincipalUtilTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
-    // ----- assertCanAccessStringClient(String) -----
-
-    @Test
-    void assertCanAccessStringClient_adminAlwaysPasses() {
-        authenticate("ADMIN", null);
-        AuthPrincipalUtil.assertCanAccessStringClient("anything");
-        AuthPrincipalUtil.assertCanAccessStringClient(null);
-    }
-
-    @Test
-    void assertCanAccessStringClient_clientMatchPasses() {
-        authenticate("CLIENT", 5L);
-        AuthPrincipalUtil.assertCanAccessStringClient("5");
-    }
-
-    @Test
-    void assertCanAccessStringClient_clientMismatchThrows() {
-        authenticate("CLIENT", 5L);
-        assertThatThrownBy(() -> AuthPrincipalUtil.assertCanAccessStringClient("6"))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void assertCanAccessStringClient_clientWithNullClientIdThrows() {
-        authenticate("CLIENT", null);
-        assertThatThrownBy(() -> AuthPrincipalUtil.assertCanAccessStringClient("5"))
-                .isInstanceOf(AccessDeniedException.class);
-    }
 }

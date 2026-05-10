@@ -4,15 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 
 import static jakarta.persistence.EnumType.STRING;
 
-@FilterDef(name = "clientFilter", parameters = @ParamDef(name = "clientId", type = String.class))
-@Filter(name = "clientFilter", condition = "client_id_str = :clientId")
+@Filter(name = "longClientFilter", condition = "client_id = :clientId")
 @Entity
 @Data
 @NoArgsConstructor

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Enables Hibernate's "clientFilter" on Lead queries for CLIENT-role requests,
+ * Enables Hibernate's "longClientFilter" on Lead and related queries for CLIENT-role requests,
  * providing automatic row-level tenant isolation as a safety net.
  * ADMIN requests do not enable the filter and can see all tenants' data.
  */
@@ -27,11 +27,9 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
         if (AuthPrincipalUtil.isClient()) {
             Long clientId = AuthPrincipalUtil.currentClientId();
             if (clientId != null) {
-                String clientIdStr = String.valueOf(clientId);
                 Session session = entityManager.unwrap(Session.class);
-                session.enableFilter("clientFilter").setParameter("clientId", clientIdStr);
                 session.enableFilter("longClientFilter").setParameter("clientId", clientId);
-                log.debug("Enabled clientFilter and longClientFilter for clientId={}", clientId);
+                log.debug("Enabled longClientFilter for clientId={}", clientId);
             }
         }
         return true;

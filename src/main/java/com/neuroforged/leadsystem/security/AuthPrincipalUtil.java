@@ -51,25 +51,6 @@ public final class AuthPrincipalUtil {
     }
 
     /**
-     * String variant for endpoints that filter by Lead.clientId (String).
-     * The caller's Long clientId is rendered to its String form for comparison.
-     */
-    public static String resolveStringClientIdForCaller(String requested) {
-        if (!isClient()) {
-            return requested;
-        }
-        Long mine = currentClientId();
-        if (mine == null) {
-            throw new AccessDeniedException("CLIENT user has no associated clientId");
-        }
-        String mineAsString = mine.toString();
-        if (requested != null && !requested.isBlank() && !requested.equals(mineAsString)) {
-            throw new AccessDeniedException("Cannot access another client's data");
-        }
-        return mineAsString;
-    }
-
-    /**
      * For get-by-id endpoints: assert the loaded entity's clientId is reachable by the caller.
      * ADMIN always passes; CLIENT must match their own clientId.
      */
@@ -79,16 +60,6 @@ public final class AuthPrincipalUtil {
         }
         Long mine = currentClientId();
         if (mine == null || !mine.equals(clientId)) {
-            throw new AccessDeniedException("Cannot access another client's data");
-        }
-    }
-
-    public static void assertCanAccessStringClient(String clientId) {
-        if (!isClient()) {
-            return;
-        }
-        Long mine = currentClientId();
-        if (mine == null || !mine.toString().equals(clientId)) {
             throw new AccessDeniedException("Cannot access another client's data");
         }
     }
