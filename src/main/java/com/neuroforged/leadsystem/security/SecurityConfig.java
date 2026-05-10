@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -34,8 +35,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/register", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
                         .requestMatchers("/auth/me", "/auth/password").authenticated()
                         .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                        .requestMatchers("/api/contact", "/api/newsletter").permitAll()
                         .requestMatchers("/api/leads/**").authenticated()
                         .requestMatchers("/api/v1/leads/**").authenticated()
                         .requestMatchers("/api/clients/**").authenticated()
@@ -44,6 +47,19 @@ public class SecurityConfig {
                         .requestMatchers("/api/calendly/oauth/callback").permitAll()
                         .requestMatchers("/api/fireflies/webhook/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                // LSB-150: JSON error responses for filter-level access denial / unauthenticated requests
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler((request, response, denied) -> {
+                            response.setStatus(403);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Access denied\"}");
+                        })
+                        .authenticationEntryPoint((request, response, authEx) -> {
+                            response.setStatus(401);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+                        })
                 )
                 .addFilterBefore(apiTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter, ApiTokenFilter.class);  // JWT only runs if X-Api-Key fails
