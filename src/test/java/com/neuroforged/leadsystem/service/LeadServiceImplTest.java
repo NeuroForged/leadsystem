@@ -3,6 +3,7 @@ package com.neuroforged.leadsystem.service;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import com.neuroforged.leadsystem.exception.DuplicateResourceException;
@@ -31,6 +32,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
+import java.util.Optional;
+
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,11 +97,13 @@ class LeadServiceImplTest {
     @Test
     void createLead_happyPath_returnsDto() {
         LeadRequestDTO dto = validRequest();
-        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientIdStr(dto.getClientId()).build();
+        Client client = new Client(); client.setId(1L); client.setName("Acme");
+        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientIdStr(dto.getClientId()).client(client).build();
         LeadResponseDTO responseDto = new LeadResponseDTO();
         responseDto.setEmail(dto.getEmail());
 
-        when(leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())).thenReturn(false);
+        when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+        when(leadRepository.existsByEmailAndClient_Id(dto.getEmail(), 1L)).thenReturn(false);
         when(leadRepository.save(any(Lead.class))).thenReturn(saved);
         when(leadMapper.toDto(saved)).thenReturn(responseDto);
 
@@ -112,7 +117,9 @@ class LeadServiceImplTest {
     @Test
     void createLead_duplicateEmail_throwsDuplicateResourceException() {
         LeadRequestDTO dto = validRequest();
-        when(leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())).thenReturn(true);
+        Client client = new Client(); client.setId(1L); client.setName("Acme");
+        when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+        when(leadRepository.existsByEmailAndClient_Id(dto.getEmail(), 1L)).thenReturn(true);
 
         assertThatThrownBy(() -> leadService.createLead(dto))
                 .isInstanceOf(DuplicateResourceException.class)

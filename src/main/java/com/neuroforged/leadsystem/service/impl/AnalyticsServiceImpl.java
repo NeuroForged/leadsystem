@@ -41,13 +41,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public LeadKpiDTO getLeadKpis(Long clientId, String from, String to) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        long leads = leadRepository.countFiltered(cid, from, to);
+        long leads = leadRepository.countFiltered(clientId, from, to);
         long meetings = clientId != null
                 ? meetingRepository.findByClient_Id(clientId).size()
                 : meetingRepository.count();
-        double avgScore = leadRepository.avgLeadScore(cid, from, to);
-        long highQuality = leadRepository.countHighQuality(cid, from, to);
+        double avgScore = leadRepository.avgLeadScore(clientId, from, to);
+        long highQuality = leadRepository.countHighQuality(clientId, from, to);
         double convRate = leads == 0 ? 0.0 : (double) meetings / leads;
         return LeadKpiDTO.builder()
                 .totalLeads(leads)
@@ -60,8 +59,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public List<LeadVolumeDTO> getLeadVolume(Long clientId, String from, String to) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        return leadRepository.findLeadVolumeByDate(cid, from, to).stream()
+        return leadRepository.findLeadVolumeByDate(clientId, from, to).stream()
                 .map(r -> LeadVolumeDTO.builder()
                         .date(r.getDate())
                         .count(r.getCount())
@@ -71,42 +69,37 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public List<GroupCountDTO> getLeadsByTrafficSource(Long clientId) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        return leadRepository.findCountsByTrafficSource(cid).stream()
+        return leadRepository.findCountsByTrafficSource(clientId).stream()
                 .map(r -> GroupCountDTO.builder().label(r.getLabel()).count(r.getCount()).build())
                 .toList();
     }
 
     @Override
     public List<GroupCountDTO> getLeadsByScoreBand(Long clientId) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        return leadRepository.findCountsByScoreBand(cid).stream()
+        return leadRepository.findCountsByScoreBand(clientId).stream()
                 .map(r -> GroupCountDTO.builder().label(r.getLabel()).count(r.getCount()).build())
                 .toList();
     }
 
     @Override
     public List<GroupCountDTO> getLeadsByBusinessType(Long clientId) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        return leadRepository.findCountsByBusinessType(cid).stream()
+        return leadRepository.findCountsByBusinessType(clientId).stream()
                 .map(r -> GroupCountDTO.builder().label(r.getLabel()).count(r.getCount()).build())
                 .toList();
     }
 
     @Override
     public List<GroupCountDTO> getLeadsByPipelineStatus(Long clientId) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
-        return leadRepository.findCountsByStatus(cid).stream()
+        return leadRepository.findCountsByStatus(clientId).stream()
                 .map(r -> GroupCountDTO.builder().label(r.getLabel()).count(r.getCount()).build())
                 .toList();
     }
 
     @Override
     public List<TopLeadDTO> getTopLeads(Long clientId, int limit) {
-        String cid = clientId != null ? String.valueOf(clientId) : null;
         var pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "leadScore"));
-        var page = cid != null
-                ? leadRepository.findByClientIdStr(cid, pageable)
+        var page = clientId != null
+                ? leadRepository.findByClient_Id(clientId, pageable)
                 : leadRepository.findAll(pageable);
         return page.stream()
                 .filter(l -> l.getStatus() != LeadStatus.BOOKED && l.getStatus() != LeadStatus.CLOSED)

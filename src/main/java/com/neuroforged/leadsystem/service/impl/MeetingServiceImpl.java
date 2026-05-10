@@ -80,7 +80,7 @@ public class MeetingServiceImpl implements MeetingService {
     private MeetingResponseDTO toDto(CalendlyMeeting m) {
         Long leadId = null;
         if (m.getInviteeEmail() != null && m.getClient() != null) {
-            leadId = leadRepository.findByEmailAndClientIdStr(m.getInviteeEmail(), String.valueOf(m.getClient().getId()))
+            leadId = leadRepository.findByEmailAndClient_Id(m.getInviteeEmail(), m.getClient().getId())
                     .map(l -> l.getId())
                     .orElse(null);
         }

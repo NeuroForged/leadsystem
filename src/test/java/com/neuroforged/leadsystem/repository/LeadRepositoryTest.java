@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.repository;
 
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,30 @@ class LeadRepositoryTest {
     @Autowired
     private LeadRepository leadRepository;
 
+    @Autowired
+    private ClientRepository clientRepository;
+
+    private Client buildClient(String name) {
+        Client c = new Client();
+        c.setName(name);
+        c.setApiKey("key-" + name + "-" + System.nanoTime());
+        return clientRepository.saveAndFlush(c);
+    }
+
     private Lead buildLead(String email, String clientIdStr) {
         return Lead.builder()
                 .email(email)
                 .clientIdStr(clientIdStr)
+                .status(LeadStatus.NEW)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private Lead buildLead(String email, Client client) {
+        return Lead.builder()
+                .email(email)
+                .clientIdStr(String.valueOf(client.getId()))
+                .client(client)
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -50,14 +71,16 @@ class LeadRepositoryTest {
     }
 
     @Test
-    void existsByEmailAndClientIdStr_returnsTrue_whenExists() {
-        leadRepository.saveAndFlush(buildLead("exists@example.com", "7"));
+    void existsByEmailAndClient_Id_returnsTrue_whenExists() {
+        Client client = buildClient("Acme");
+        leadRepository.saveAndFlush(buildLead("exists@example.com", client));
 
-        assertThat(leadRepository.existsByEmailAndClientIdStr("exists@example.com", "7")).isTrue();
+        assertThat(leadRepository.existsByEmailAndClient_Id("exists@example.com", client.getId())).isTrue();
     }
 
     @Test
-    void existsByEmailAndClientIdStr_returnsFalse_whenNotExists() {
-        assertThat(leadRepository.existsByEmailAndClientIdStr("nobody@example.com", "7")).isFalse();
+    void existsByEmailAndClient_Id_returnsFalse_whenNotExists() {
+        Client client = buildClient("Other");
+        assertThat(leadRepository.existsByEmailAndClient_Id("nobody@example.com", client.getId())).isFalse();
     }
 }

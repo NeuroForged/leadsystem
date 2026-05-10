@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificationExecutor<Lead> {
 
-    boolean existsByEmailAndClientIdStr(String email, String clientIdStr);
+    boolean existsByEmailAndClient_Id(String email, Long clientId);
 
     boolean existsByBusinessName(String businessName);
 
@@ -24,29 +24,29 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
 
     Optional<Lead> findByBusinessName(String businessName);
 
-    List<Lead> findByClientIdStr(String clientIdStr);
+    List<Lead> findByClient_Id(Long clientId);
 
-    Page<Lead> findByClientIdStr(String clientIdStr, Pageable pageable);
+    Page<Lead> findByClient_Id(Long clientId, Pageable pageable);
 
     Page<Lead> findByStatus(LeadStatus status, Pageable pageable);
 
-    Page<Lead> findByClientIdStrAndStatus(String clientIdStr, LeadStatus status, Pageable pageable);
+    Page<Lead> findByClient_IdAndStatus(Long clientId, LeadStatus status, Pageable pageable);
 
-    Optional<Lead> findByEmailAndClientIdStr(String email, String clientIdStr);
+    Optional<Lead> findByEmailAndClient_Id(String email, Long clientId);
 
     // ── Analytics aggregation queries ────────────────────────────────────────
 
     @Query(value = """
             SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') AS date, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
-            WHERE (:clientId IS NULL OR client_id_str = :clientId)
+            WHERE (:clientId IS NULL OR client_id = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             GROUP BY created_at::date
             ORDER BY created_at::date
             """, nativeQuery = true)
     List<DateCount> findLeadVolumeByDate(
-            @Param("clientId") String clientId,
+            @Param("clientId") Long clientId,
             @Param("fromDate") String fromDate,
             @Param("toDate") String toDate);
 
@@ -54,31 +54,31 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
             SELECT traffic_source AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE traffic_source IS NOT NULL
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
             GROUP BY traffic_source
             ORDER BY count DESC
             """, nativeQuery = true)
-    List<LabelCount> findCountsByTrafficSource(@Param("clientId") String clientId);
+    List<LabelCount> findCountsByTrafficSource(@Param("clientId") Long clientId);
 
     @Query(value = """
             SELECT business_type AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE business_type IS NOT NULL
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
             GROUP BY business_type
             ORDER BY count DESC
             LIMIT 10
             """, nativeQuery = true)
-    List<LabelCount> findCountsByBusinessType(@Param("clientId") String clientId);
+    List<LabelCount> findCountsByBusinessType(@Param("clientId") Long clientId);
 
     @Query(value = """
             SELECT CAST(status AS TEXT) AS label, CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE status IS NOT NULL
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
             GROUP BY status
             """, nativeQuery = true)
-    List<LabelCount> findCountsByStatus(@Param("clientId") String clientId);
+    List<LabelCount> findCountsByStatus(@Param("clientId") Long clientId);
 
     @Query(value = """
             SELECT
@@ -90,44 +90,44 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
                 CAST(COUNT(*) AS BIGINT) AS count
             FROM lead
             WHERE lead_score IS NOT NULL
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
             GROUP BY label
             ORDER BY MIN(lead_score) DESC
             """, nativeQuery = true)
-    List<LabelCount> findCountsByScoreBand(@Param("clientId") String clientId);
+    List<LabelCount> findCountsByScoreBand(@Param("clientId") Long clientId);
 
     @Query(value = """
             SELECT COUNT(*) FROM lead
-            WHERE (:clientId IS NULL OR client_id_str = :clientId)
+            WHERE (:clientId IS NULL OR client_id = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
     long countFiltered(
-            @Param("clientId") String clientId,
+            @Param("clientId") Long clientId,
             @Param("fromDate") String fromDate,
             @Param("toDate") String toDate);
 
     @Query(value = """
             SELECT COALESCE(AVG(lead_score), 0) FROM lead
             WHERE lead_score IS NOT NULL
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
     double avgLeadScore(
-            @Param("clientId") String clientId,
+            @Param("clientId") Long clientId,
             @Param("fromDate") String fromDate,
             @Param("toDate") String toDate);
 
     @Query(value = """
             SELECT COUNT(*) FROM lead
             WHERE lead_score >= 80
-              AND (:clientId IS NULL OR client_id_str = :clientId)
+              AND (:clientId IS NULL OR client_id = :clientId)
               AND (:fromDate IS NULL OR created_at >= CAST(:fromDate AS DATE))
               AND (:toDate IS NULL OR created_at <= CAST(:toDate AS DATE) + INTERVAL '1 day')
             """, nativeQuery = true)
     long countHighQuality(
-            @Param("clientId") String clientId,
+            @Param("clientId") Long clientId,
             @Param("fromDate") String fromDate,
             @Param("toDate") String toDate);
 }
