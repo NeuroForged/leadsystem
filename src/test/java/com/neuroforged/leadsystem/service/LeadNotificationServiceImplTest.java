@@ -38,10 +38,20 @@ class LeadNotificationServiceImplTest {
     }
 
     private Lead leadForClient(String clientId) {
+        // LSB-155: getClientIdStr() is now derived from Client FK.
+        // Attach a Client when clientId is numeric so the service can resolve it;
+        // for non-numeric IDs leave client null (mirrors legacy chatbot-abc rows).
+        Client client = null;
+        try {
+            client = new Client();
+            client.setId(Long.parseLong(clientId));
+        } catch (NumberFormatException e) {
+            client = null;
+        }
         return Lead.builder()
                 .id(1L)
                 .email("lead@example.com")
-                .clientIdStr(clientId)
+                .client(client)
                 .businessName("Acme")
                 .build();
     }

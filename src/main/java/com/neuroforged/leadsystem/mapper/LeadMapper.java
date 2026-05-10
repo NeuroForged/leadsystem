@@ -8,6 +8,11 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface LeadMapper {
 
-    @Mapping(source = "clientIdStr", target = "clientId")
+    // LSB-155: derive LeadResponseDTO.clientId (String) from the FK directly,
+    // since the legacy client_id_str column has been dropped.
+    @Mapping(
+            target = "clientId",
+            expression = "java(lead.getClient() != null ? String.valueOf(lead.getClient().getId()) : null)"
+    )
     LeadResponseDTO toDto(Lead lead);
 }
