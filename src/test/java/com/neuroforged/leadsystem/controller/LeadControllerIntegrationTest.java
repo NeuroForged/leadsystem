@@ -54,6 +54,7 @@ class LeadControllerIntegrationTest {
 
     private String clientApiKey;
     private String clientId;
+    private Client testClient;
     private String adminJwt;
 
     @BeforeEach
@@ -64,6 +65,7 @@ class LeadControllerIntegrationTest {
         Client saved = clientRepository.save(client);
         clientApiKey = saved.getApiKey();
         clientId = String.valueOf(saved.getId());
+        testClient = saved;
 
         AuthenticationRequest loginRequest = new AuthenticationRequest();
         loginRequest.setEmail("admin@test.com");
@@ -107,20 +109,20 @@ class LeadControllerIntegrationTest {
     }
 
     @Test
-    void postLead_invalidApiKey_returns403() throws Exception {
+    void postLead_invalidApiKey_returns401() throws Exception {
         mockMvc.perform(post("/api/leads")
                         .header("X-Api-Key", "wrong-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validLead("new2@example.com"))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void postLead_missingApiKey_returns403() throws Exception {
+    void postLead_missingApiKey_returns401() throws Exception {
         mockMvc.perform(post("/api/leads")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validLead("new3@example.com"))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -220,7 +222,7 @@ class LeadControllerIntegrationTest {
     void patchLeadStatus_withAdminJwt_returns200() throws Exception {
         Lead lead = Lead.builder()
                 .email("patch@example.com")
-                .clientIdStr(clientId)
+                .client(testClient)
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
                 .build();
