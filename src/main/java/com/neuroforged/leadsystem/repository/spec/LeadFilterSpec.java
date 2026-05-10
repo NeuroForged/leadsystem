@@ -8,11 +8,11 @@ public class LeadFilterSpec {
 
     private LeadFilterSpec() {}
 
-    public static Specification<Lead> withClientId(String clientId) {
+    public static Specification<Lead> withClientId(Long clientId) {
         return (root, query, cb) ->
-                (clientId == null || clientId.isBlank())
+                clientId == null
                         ? cb.conjunction()
-                        : cb.equal(root.get("clientIdStr"), clientId);
+                        : cb.equal(root.get("client").get("id"), clientId);
     }
 
     public static Specification<Lead> withStatus(LeadStatus status) {

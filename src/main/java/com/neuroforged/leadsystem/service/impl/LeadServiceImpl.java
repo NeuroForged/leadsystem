@@ -64,14 +64,15 @@ public class LeadServiceImpl implements LeadService {
 
         String clientName = resolveClientName(dto.getClientId());
 
-        if (leadRepository.existsByEmailAndClientIdStr(dto.getEmail(), dto.getClientId())) {
+        Client resolvedClient = resolveClient(dto.getClientId());
+        if (resolvedClient != null && leadRepository.existsByEmailAndClient_Id(dto.getEmail(), resolvedClient.getId())) {
             eventLogger.leadDuplicate(clientName, dto.getClientId(), dto.getEmail());
             metrics.recordLeadDuplicate(dto.getClientId());
             throw new DuplicateResourceException(
                     "Lead with email " + dto.getEmail() + " already exists for clientId " + dto.getClientId());
         }
 
-        Lead lead = buildLeadEntity(dto);
+        Lead lead = buildLeadEntity(dto, resolvedClient);
         leadEnrichmentService.enrich(lead);
         leadRoutingService.route(lead);
         Lead savedLead = leadRepository.save(lead);
@@ -86,17 +87,14 @@ public class LeadServiceImpl implements LeadService {
         leadNotificationService.notifyNewLead(savedLead);
 
         try {
-            Client resolvedClient = savedLead.getClient();
-            if (resolvedClient == null && savedLead.getClientIdStr() != null) {
-                resolvedClient = clientRepository.findById(Long.parseLong(savedLead.getClientIdStr())).orElse(null);
-            }
-            if (resolvedClient != null) {
-                final Client c = resolvedClient;
-                outboundWebhookService.notifyWebhook(savedLead, c);
+            Client c = resolvedClient != null ? resolvedClient : savedLead.getClient();
+            if (c != null) {
+                final Client finalClient = c;
+                outboundWebhookService.notifyWebhook(savedLead, finalClient);
                 Map<String, String> ctx = buildLeadContext(savedLead);
-                notificationService.notify(c.getId(), NotificationEventType.NEW_LEAD, ctx);
+                notificationService.notify(finalClient.getId(), NotificationEventType.NEW_LEAD, ctx);
                 if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
-                    notificationService.notify(c.getId(), NotificationEventType.LEAD_SCORED_HIGH, ctx);
+                    notificationService.notify(finalClient.getId(), NotificationEventType.LEAD_SCORED_HIGH, ctx);
                 }
             }
         } catch (Exception e) {
@@ -123,7 +121,7 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
-    public PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, String search, Pageable pageable) {
+    public PagedResponse<LeadResponseDTO> getLeads(Long clientId, LeadStatus status, String search, Pageable pageable) {
         var spec = LeadFilterSpec.withClientId(clientId)
                 .and(LeadFilterSpec.withStatus(status))
                 .and(LeadFilterSpec.withSearch(search));
@@ -138,12 +136,13 @@ public class LeadServiceImpl implements LeadService {
         return leadMapper.toDto(leadRepository.save(lead));
     }
 
-    public List<LeadResponseDTO> getLeadsByClientId(String clientId) {
-        if (clientId == null || clientId.isBlank()) {
-            throw new InvalidLeadException("Client ID must not be null or blank.");
+    @Override
+    public List<LeadResponseDTO> getLeadsByClientId(Long clientId) {
+        if (clientId == null) {
+            throw new InvalidLeadException("Client ID must not be null.");
         }
 
-        return leadRepository.findByClientIdStr(clientId).stream()
+        return leadRepository.findByClient_Id(clientId).stream()
                 .map(leadMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -174,7 +173,7 @@ public class LeadServiceImpl implements LeadService {
         return ctx;
     }
 
-    private Lead buildLeadEntity(LeadRequestDTO dto) {
+    private Lead buildLeadEntity(LeadRequestDTO dto, Client client) {
         return Lead.builder()
                 .email(dto.getEmail())
                 .businessName(dto.getBusinessName())
@@ -188,7 +187,7 @@ public class LeadServiceImpl implements LeadService {
                 .leadScore(dto.getLeadScore())
                 .leadChallenge(dto.getLeadChallenge())
                 .clientIdStr(dto.getClientId())
-                .client(resolveClient(dto.getClientId()))
+                .client(client)
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
                 .build();

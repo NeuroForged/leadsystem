@@ -10,8 +10,8 @@ import java.util.List;
 
 public interface LeadService {
     LeadResponseDTO createLead(LeadRequestDTO dto);
-    PagedResponse<LeadResponseDTO> getLeads(String clientId, LeadStatus status, String search, Pageable pageable);
+    PagedResponse<LeadResponseDTO> getLeads(Long clientId, LeadStatus status, String search, Pageable pageable);
     LeadResponseDTO updateLeadStatus(Long id, LeadStatus status);
-    List<LeadResponseDTO> getLeadsByClientId(String clientId);
+    List<LeadResponseDTO> getLeadsByClientId(Long clientId);
     LeadResponseDTO getLeadById(Long id);
 }

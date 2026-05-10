@@ -56,7 +56,7 @@ public class LeadController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<PagedResponse<LeadResponseDTO>> getLeads(
-            @RequestParam(required = false) String clientId,
+            @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) LeadStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -64,7 +64,7 @@ public class LeadController {
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
 
         Sort resolvedSort = parseSort(sort);
-        String resolvedClientId = AuthPrincipalUtil.resolveStringClientIdForCaller(clientId);
+        Long resolvedClientId = AuthPrincipalUtil.resolveClientIdForCaller(clientId);
         Pageable pageable = PageRequest.of(page, size, resolvedSort);
         log.info("Fetching leads -- clientId={}, status={}, search={}, page={}, size={}, sort={}", resolvedClientId, status, search, page, size, sort);
         return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, search, pageable));
@@ -92,11 +92,8 @@ public class LeadController {
 
     @GetMapping("/client/{clientId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
-    public ResponseEntity<?> getLeadsByClientId(@PathVariable String clientId) {
-        if (clientId == null || clientId.isBlank()) {
-            throw new InvalidLeadException("Client ID must be provided.");
-        }
-        AuthPrincipalUtil.assertCanAccessStringClient(clientId);
+    public ResponseEntity<?> getLeadsByClientId(@PathVariable Long clientId) {
+        AuthPrincipalUtil.assertCanAccessClient(clientId);
         log.info("Fetching leads for clientId: {}", clientId);
         return ResponseEntity.ok(leadService.getLeadsByClientId(clientId));
     }
@@ -106,7 +103,7 @@ public class LeadController {
     public ResponseEntity<LeadResponseDTO> getLeadById(@PathVariable Long id) {
         log.info("Fetching lead by ID: {}", id);
         LeadResponseDTO lead = leadService.getLeadById(id);
-        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        assertCanAccessLead(lead);
         return ResponseEntity.ok(lead);
     }
 
@@ -114,7 +111,7 @@ public class LeadController {
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
     public ResponseEntity<List<LeadCommentDto>> getComments(@PathVariable Long id) {
         LeadResponseDTO lead = leadService.getLeadById(id);
-        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        assertCanAccessLead(lead);
         return ResponseEntity.ok(leadCommentService.getComments(id));
     }
 
@@ -124,11 +121,18 @@ public class LeadController {
             @PathVariable Long id,
             @Valid @RequestBody AddCommentRequest request) {
         LeadResponseDTO lead = leadService.getLeadById(id);
-        AuthPrincipalUtil.assertCanAccessStringClient(lead.getClientId());
+        assertCanAccessLead(lead);
         String email = AuthPrincipalUtil.currentEmail();
         String role = AuthPrincipalUtil.currentRole();
         log.info("Adding comment to lead {} by {}", id, email);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(leadCommentService.addComment(id, request.getContent(), email, role));
+    }
+
+    /** Resolves the lead's clientId (stored as String for DTO compat) to Long and asserts access. */
+    private void assertCanAccessLead(LeadResponseDTO lead) {
+        if (lead.getClientId() != null) {
+            AuthPrincipalUtil.assertCanAccessClient(Long.parseLong(lead.getClientId()));
+        }
     }
 }
