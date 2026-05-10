@@ -131,10 +131,39 @@ public class AuthController {
     }
 
     @PatchMapping("/password")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Principal principal) {
         authService.changePassword(principal.getName(), request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * LSB-149 / PORTAL-140: Trigger password reset email.
+     * Always returns 200 to avoid email enumeration. Backend sends token via email.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody java.util.Map<String, String> body) {
+        String email = body.getOrDefault("email", "");
+        if (!email.isBlank()) {
+            log.info("Password reset requested for email={}", email);
+            // TODO: generate token, persist, send email (LSB-149)
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * LSB-149 / PORTAL-140: Reset password using emailed token.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody java.util.Map<String, String> body) {
+        String token = body.getOrDefault("token", "");
+        String newPassword = body.getOrDefault("newPassword", "");
+        if (token.isBlank() || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("Password reset attempt with token");
+        // TODO: validate token, update password (LSB-149)
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/register")
