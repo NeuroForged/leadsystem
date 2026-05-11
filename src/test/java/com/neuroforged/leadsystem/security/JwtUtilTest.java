@@ -15,7 +15,8 @@ class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(SECRET);
+        // LSB-162: enforce-iss-aud=false → grace-mode validator, matches prod defaults.
+        jwtUtil = new JwtUtil(SECRET, false);
         user = User.builder()
                 .id(1L)
                 .email("admin@test.com")
@@ -44,7 +45,7 @@ class JwtUtilTest {
 
     @Test
     void validateToken_tokenSignedWithDifferentSecret_returnsFalse() {
-        JwtUtil otherUtil = new JwtUtil("completely-different-secret-that-is-long-enough");
+        JwtUtil otherUtil = new JwtUtil("completely-different-secret-that-is-long-enough", false);
         String foreignToken = otherUtil.generateToken(user);
         assertThat(jwtUtil.validateToken(foreignToken)).isFalse();
     }

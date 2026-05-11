@@ -31,6 +31,7 @@ public class JwtUtil {
     private final boolean enforceIssAud;
 
     public JwtUtil(
+            @org.springframework.beans.factory.annotation.Autowired
             @Value("${neuroforged.jwt.secret}") String secret,
             // LSB-162: false during the grace window — accept tokens with or without
             // iss/aud claims so old sessions don't get logged out. Flip to true after
@@ -38,11 +39,6 @@ public class JwtUtil {
             @Value("${neuroforged.jwt.enforce-iss-aud:false}") boolean enforceIssAud) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.enforceIssAud = enforceIssAud;
-    }
-
-    /** LSB-162: test-only convenience ctor — defaults enforce-iss-aud to false. */
-    public JwtUtil(String secret) {
-        this(secret, false);
     }
 
     public String generateToken(User user) {

@@ -39,7 +39,7 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        jwtUtil = new JwtUtil(SECRET);
+        jwtUtil = new JwtUtil(SECRET, false);
 
         var jwtField = JwtAuthenticationFilter.class.getDeclaredField("jwtUtil");
         jwtField.setAccessible(true);
