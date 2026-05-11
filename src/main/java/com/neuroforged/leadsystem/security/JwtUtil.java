@@ -40,6 +40,11 @@ public class JwtUtil {
         this.enforceIssAud = enforceIssAud;
     }
 
+    /** LSB-162: test-only convenience ctor — defaults enforce-iss-aud to false. */
+    public JwtUtil(String secret) {
+        this(secret, false);
+    }
+
     public String generateToken(User user) {
         JwtBuilder builder = Jwts.builder()
                 .setSubject(user.getEmail())
