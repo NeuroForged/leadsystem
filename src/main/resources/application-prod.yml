@@ -54,6 +54,9 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cookie:
+    # LSB-159: shared across subdomains in prod/dev. Override per-env via NEUROFORGED_COOKIE_DOMAIN.
+    domain: ${NEUROFORGED_COOKIE_DOMAIN:alchemizeiq.com}
   cors:
     allowed-origins: ${NEUROFORGED_CORS_ALLOWED_ORIGINS}
   mail:

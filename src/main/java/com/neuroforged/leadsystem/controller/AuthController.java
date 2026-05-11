@@ -46,6 +46,11 @@ public class AuthController {
     private final BusinessEventLogger eventLogger;
     private final LeadSystemMetrics metrics;
 
+    // LSB-159: cookie Domain is per-environment. Blank in local (host-only cookies);
+    // set to "alchemizeiq.com" in prod/dev so subdomains (app/api/...) share the auth cookie.
+    @org.springframework.beans.factory.annotation.Value("${neuroforged.cookie.domain:}")
+    private String cookieDomain;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request,
                                    HttpServletResponse response) {
@@ -203,8 +208,13 @@ public class AuthController {
                 .append("; Path=/")
                 .append("; HttpOnly")
                 .append("; SameSite=Lax")
-                .append("; Max-Age=").append(maxAge)
-                .append("; Domain=alchemizeiq.com");
+                .append("; Max-Age=").append(maxAge);
+        // LSB-159: only set the Domain attribute when configured. Local dev gets a
+        // host-only cookie (omitting Domain altogether) which the browser keeps for
+        // 127.0.0.1 / localhost / a custom dev host.
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            sb.append("; Domain=").append(cookieDomain);
+        }
         if (secure) {
             sb.append("; Secure");
         }
