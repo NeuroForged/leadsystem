@@ -2,39 +2,74 @@ package com.neuroforged.leadsystem.config;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Bucket4j-backed rate limit dispatcher.
+ *
+ * <p>LSB-167: in prod and local-dev (with Redis running) buckets live in Redis
+ * via {@link RedisRateLimitConfig}'s Lettuce-based {@link ProxyManager}, so
+ * limits survive Coolify rollouts and stay coherent across replicas. The
+ * previous in-memory ConcurrentHashMap reset on every restart — a brute-force
+ * attempt could time itself around a deploy to get a clean budget.
+ *
+ * <p>When the {@code neuroforged.redis.url} property is missing — the
+ * integration-test profile keeps it blank — the constructor falls back to a
+ * ConcurrentHashMap of {@link io.github.bucket4j.local.LocalBucket} so test
+ * suites don't need a Redis container just to exercise unrelated controllers.
+ *
+ * <p>Key namespaces (Redis prefix / map key shape):
+ * <ul>
+ *   <li>{@code rl:api:<apiKey>} — LSB-37 chatbot lead submission</li>
+ *   <li>{@code rl:public:<endpoint>:<ip>} — LSB-161 contact/newsletter</li>
+ *   <li>{@code rl:login:<email>} — LSB-160 login per-email</li>
+ * </ul>
+ */
 @Service
 public class RateLimitService {
 
-    @Value("${rate-limit.requests-per-minute:60}")
-    private int requestsPerMinute;
+    private static final String KEY_API    = "rl:api:";
+    private static final String KEY_PUBLIC = "rl:public:";
+    private static final String KEY_LOGIN  = "rl:login:";
 
-    @Value("${rate-limit.requests-per-hour:500}")
-    private int requestsPerHour;
+    private final Optional<ProxyManager<String>> proxyManager;
+    private final BucketConfiguration apiKeyConfig;
+    private final BucketConfiguration publicConfig;
+    private final BucketConfiguration loginConfig;
 
-    private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
+    // Fallback used only when proxyManager is empty (test profile, no Redis).
+    private final ConcurrentHashMap<String, Bucket> localBuckets = new ConcurrentHashMap<>();
 
-    // LSB-161: separate bucket map for low-rate public endpoints (contact, newsletter).
-    // Key shape: "<endpoint>:<ip>". Stricter limits to deter spam-bots without
-    // affecting legitimate burst usage of /api/leads.
-    private final ConcurrentHashMap<String, Bucket> publicBuckets = new ConcurrentHashMap<>();
-
-    // LSB-160: per-email login bucket. Slows credential-stuffing / password-spray.
-    // Key shape: lowercased email. 5 attempts per 5 minutes per email.
-    private final ConcurrentHashMap<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
+    public RateLimitService(
+            Optional<ProxyManager<String>> proxyManager,
+            @Value("${rate-limit.requests-per-minute:60}") int requestsPerMinute,
+            @Value("${rate-limit.requests-per-hour:500}") int requestsPerHour) {
+        this.proxyManager = proxyManager;
+        this.apiKeyConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.simple(requestsPerMinute, Duration.ofMinutes(1)))
+                .addLimit(Bandwidth.simple(requestsPerHour, Duration.ofHours(1)))
+                .build();
+        this.publicConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.simple(5, Duration.ofHours(1)))
+                .build();
+        this.loginConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.simple(5, Duration.ofMinutes(5)))
+                .build();
+    }
 
     public boolean tryConsume(String apiKey) {
-        return buckets.computeIfAbsent(apiKey, this::newBucket).tryConsume(1);
+        return bucket(KEY_API + apiKey, apiKeyConfig).tryConsume(1);
     }
 
     public long getSecondsUntilRefill(String apiKey) {
-        return buckets.computeIfAbsent(apiKey, this::newBucket)
-                .getAvailableTokens() > 0 ? 0 : 60;
+        return bucket(KEY_API + apiKey, apiKeyConfig).getAvailableTokens() > 0 ? 0 : 60;
     }
 
     /**
@@ -42,8 +77,7 @@ public class RateLimitService {
      * Returns {@code true} if the request is allowed; {@code false} when the bucket is empty.
      */
     public boolean tryConsumePublic(String endpoint, String ip) {
-        String key = endpoint + ":" + ip;
-        return publicBuckets.computeIfAbsent(key, k -> newPublicBucket()).tryConsume(1);
+        return bucket(KEY_PUBLIC + endpoint + ":" + ip, publicConfig).tryConsume(1);
     }
 
     /**
@@ -51,9 +85,8 @@ public class RateLimitService {
      * reset the bucket via {@link #resetLogin(String)}.
      */
     public boolean tryConsumeLogin(String email) {
-        if (email == null || email.isBlank()) return true; // bad request will fail upstream
-        String key = email.toLowerCase().trim();
-        return loginBuckets.computeIfAbsent(key, k -> newLoginBucket()).tryConsume(1);
+        if (email == null || email.isBlank()) return true;
+        return bucket(KEY_LOGIN + normaliseEmail(email), loginConfig).tryConsume(1);
     }
 
     /**
@@ -63,25 +96,36 @@ public class RateLimitService {
      */
     public void resetLogin(String email) {
         if (email == null || email.isBlank()) return;
-        loginBuckets.remove(email.toLowerCase().trim());
+        String key = KEY_LOGIN + normaliseEmail(email);
+        proxyManager.ifPresentOrElse(
+                pm -> pm.removeProxy(key),
+                () -> localBuckets.remove(key)
+        );
     }
 
-    private Bucket newBucket(String key) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(requestsPerMinute, Duration.ofMinutes(1)))
-                .addLimit(Bandwidth.simple(requestsPerHour, Duration.ofHours(1)))
-                .build();
+    // ── Bucket dispatch ─────────────────────────────────────────────────────
+
+    /**
+     * Returns a usable bucket for the given key, either via the Redis
+     * {@link ProxyManager} when available, or a JVM-local in-memory bucket
+     * (test profile only).
+     */
+    @SuppressWarnings("unchecked")
+    private Bucket bucket(String key, BucketConfiguration config) {
+        return proxyManager
+                .map(pm -> (Bucket) pm.builder().build(key, () -> config))
+                .orElseGet(() -> localBuckets.computeIfAbsent(key, k -> newLocalBucket(config)));
     }
 
-    private Bucket newPublicBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(5, Duration.ofHours(1)))
-                .build();
+    private static Bucket newLocalBucket(BucketConfiguration config) {
+        var builder = Bucket.builder();
+        for (Bandwidth bw : config.getBandwidths()) {
+            builder.addLimit(bw);
+        }
+        return builder.build();
     }
 
-    private Bucket newLoginBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(5, Duration.ofMinutes(5)))
-                .build();
+    private static String normaliseEmail(String email) {
+        return email.toLowerCase().trim();
     }
 }

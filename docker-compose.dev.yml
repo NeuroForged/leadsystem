@@ -30,6 +30,20 @@ services:
     labels:
       environment: dev
 
+  # LSB-167: Bucket4j rate limiter backs onto Redis. Local dev points
+  # NEUROFORGED_REDIS_URL at redis://localhost:6379 by default (see
+  # application-local.yml). 7.x Alpine — 5–6 MB image, zero-config.
+  redis:
+    image: redis:7-alpine
+    container_name: neuroforged-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - neuroforged
+    labels:
+      environment: dev
+
 volumes:
   postgres_data:
   pgadmin_data:

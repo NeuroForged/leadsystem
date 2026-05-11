@@ -74,6 +74,11 @@ neuroforged:
     # instead of buried in WARN logs. Override with NEUROFORGED_SCHEMA_AUDIT_FAIL=false
     # if a future migration needs to deploy ahead of the entity that backs it.
     fail-on-drift: ${NEUROFORGED_SCHEMA_AUDIT_FAIL:true}
+  redis:
+    # LSB-167: Redis URL for the Bucket4j rate-limit ProxyManager. Set in
+    # Coolify alongside the leadsystem service (small Redis service on the
+    # same project network).
+    url: ${REDIS_URL}
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM:60}
