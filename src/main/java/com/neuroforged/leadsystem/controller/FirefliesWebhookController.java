@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Optional;
 
 @RestController
@@ -45,7 +47,11 @@ public class FirefliesWebhookController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (!configuredSecret.equals(providedSecret)) {
+        // LSB-156: constant-time comparison. String.equals leaks bytes via response timing.
+        if (providedSecret == null
+                || !MessageDigest.isEqual(
+                        configuredSecret.getBytes(StandardCharsets.UTF_8),
+                        providedSecret.getBytes(StandardCharsets.UTF_8))) {
             log.warn("[FIREFLIES] Invalid secret for clientId={}", clientId);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

@@ -54,6 +54,9 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cookie:
+    # LSB-159: blank in local — browsers keep host-only cookies for localhost/127.0.0.1
+    domain: ""
   cors:
     allowed-origins: "http://localhost:3000,http://localhost:5173"
   mail:

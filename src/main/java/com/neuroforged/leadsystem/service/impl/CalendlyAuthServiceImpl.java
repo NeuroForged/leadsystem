@@ -56,10 +56,16 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
         }
 
         Long clientId = clientIdOpt.get();
-        log.info("client id: {}", clientId);
         CalendlyTokenResponse tokenResponse = calendlyApiClient.exchangeCodeForToken(request.getCode());
-        log.info("token response:\n access token: {}\nrefresh token: {}\nowner: {}\nownterType: {}\norganization: {}\nclientId: {} "
-        ,tokenResponse.getAccessToken(),tokenResponse.getRefreshToken(), tokenResponse.getOwner(), tokenResponse.getOwnerType(), tokenResponse.getOrganization(), clientId);
+        // LSB-157: never log full tokens. Mask via LogMasking.mask() so Loki/Grafana
+        // log access can't be used to harvest customer Calendly creds.
+        log.info("Calendly OAuth token exchange OK clientId={} owner={} ownerType={} organization={} accessToken={} refreshToken={}",
+                clientId,
+                tokenResponse.getOwner(),
+                tokenResponse.getOwnerType(),
+                tokenResponse.getOrganization(),
+                com.neuroforged.leadsystem.security.LogMasking.mask(tokenResponse.getAccessToken()),
+                com.neuroforged.leadsystem.security.LogMasking.mask(tokenResponse.getRefreshToken()));
         CalendlyAccount account = CalendlyAccount.builder()
                 .accessToken(tokenResponse.getAccessToken())
                 .refreshToken(tokenResponse.getRefreshToken())

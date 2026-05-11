@@ -37,7 +37,11 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login", "/auth/register", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
                         .requestMatchers("/auth/me", "/auth/password").authenticated()
-                        .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+                        // LSB-158: /actuator/health stays public for Coolify probes.
+                        // /actuator/prometheus + other actuator endpoints require ADMIN auth so
+                        // metric labels (customer counts, error rates) aren't world-readable.
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/api/contact", "/api/newsletter").permitAll()
                         .requestMatchers("/api/leads/**").authenticated()
                         .requestMatchers("/api/v1/leads/**").authenticated()
