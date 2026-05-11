@@ -68,6 +68,10 @@ neuroforged:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
   encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: false
+  redis:
+    # LSB-167: local dev points at the Redis service from docker-compose.yml.
+    # Override with NEUROFORGED_REDIS_URL if running Redis elsewhere.
+    url: ${NEUROFORGED_REDIS_URL:redis://localhost:6379}
 
 rate-limit:
   requests-per-minute: 60
