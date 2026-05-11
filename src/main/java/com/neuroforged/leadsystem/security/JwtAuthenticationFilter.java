@@ -64,6 +64,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } else if ("refresh".equals(jwtUtil.extractTokenType(jwt))) {
                 metrics.recordAuthFailure("refresh_token_used");
             } else {
+                // LSB-162: log (don't reject) tokens missing iss/aud during the grace
+                // window. Once the warn count drops to zero in Loki we can flip
+                // neuroforged.jwt.enforce-iss-aud=true to reject mismatched tokens.
+                if (!jwtUtil.hasValidIssAud(jwt)) {
+                    log.warn("JWT missing iss/aud claims (grace window) email={}", email);
+                    metrics.recordAuthFailure("missing_iss_aud_grace");
+                }
                 CustomUserPrincipal principal = new CustomUserPrincipal(
                         user.get().getEmail(),
                         user.get().getPassword(),
