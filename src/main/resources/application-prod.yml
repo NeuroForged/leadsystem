@@ -69,7 +69,11 @@ neuroforged:
   encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: ${NEUROFORGED_SEED_SAMPLE_DATA:false}
   schema-audit:
-    fail-on-drift: false
+    # LSB-168: post V20/V21, entity↔DB mapping is in a clean state. Abort
+    # startup on drift so the next entity-without-migration footgun is loud
+    # instead of buried in WARN logs. Override with NEUROFORGED_SCHEMA_AUDIT_FAIL=false
+    # if a future migration needs to deploy ahead of the entity that backs it.
+    fail-on-drift: ${NEUROFORGED_SCHEMA_AUDIT_FAIL:true}
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM:60}
