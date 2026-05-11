@@ -57,6 +57,9 @@ neuroforged:
   cookie:
     # LSB-159: shared across subdomains in prod/dev. Override per-env via NEUROFORGED_COOKIE_DOMAIN.
     domain: ${NEUROFORGED_COOKIE_DOMAIN:alchemizeiq.com}
+  portal:
+    # LSB-164: used to build reset-password links in transactional emails.
+    url: ${NEUROFORGED_PORTAL_URL:https://app.alchemizeiq.com}
   cors:
     allowed-origins: ${NEUROFORGED_CORS_ALLOWED_ORIGINS}
   mail:

@@ -45,6 +45,8 @@ public class AuthController {
     private final Environment environment;
     private final BusinessEventLogger eventLogger;
     private final LeadSystemMetrics metrics;
+    private final com.neuroforged.leadsystem.config.RateLimitService rateLimitService;
+    private final com.neuroforged.leadsystem.service.PasswordResetService passwordResetService;
 
     // LSB-159: cookie Domain is per-environment. Blank in local (host-only cookies);
     // set to "alchemizeiq.com" in prod/dev so subdomains (app/api/...) share the auth cookie.
@@ -54,6 +56,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request,
                                    HttpServletResponse response) {
+        // LSB-160: per-email rate limit before any DB / password-encoder work.
+        // Slows credential-stuffing and password-spray attacks. Successful login
+        // clears the bucket so legitimate users aren't locked out after a typo.
+        if (!rateLimitService.tryConsumeLogin(request.getEmail())) {
+            metrics.recordAuthFailure("rate_limited");
+            eventLogger.authFailed("rate_limited", request.getEmail(), null);
+            return ResponseEntity.status(429)
+                    .header("Retry-After", "300")
+                    .body("Too many login attempts. Try again in a few minutes.");
+        }
         try {
             log.debug("Login attempt for email={}", request.getEmail());
 
@@ -72,6 +84,7 @@ public class AuthController {
             addCookie(response, "alchemize_at", accessToken, (int) jwtUtil.getAccessTokenMaxAge(), secure);
             addCookie(response, "alchemize_rt", refreshToken, (int) jwtUtil.getRefreshTokenMaxAge(), secure);
 
+            rateLimitService.resetLogin(request.getEmail());
             eventLogger.authSuccess(request.getEmail());
             return ResponseEntity.ok(new AuthenticationResponse(accessToken));
         } catch (AuthenticationException e) {
@@ -143,32 +156,44 @@ public class AuthController {
     }
 
     /**
-     * LSB-149 / PORTAL-140: Trigger password reset email.
-     * Always returns 200 to avoid email enumeration. Backend sends token via email.
+     * LSB-164: Trigger password-reset email. Always returns 200 to avoid email
+     * enumeration. Rate-limited per email by {@link RateLimitService#tryConsumeLogin}.
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(@RequestBody java.util.Map<String, String> body) {
         String email = body.getOrDefault("email", "");
         if (!email.isBlank()) {
-            log.info("Password reset requested for email={}", email);
-            // TODO: generate token, persist, send email (LSB-149)
+            // LSB-164: per-email rate limit. Reuses the login bucket (5/5min/email)
+            // because the cost model is the same — both endpoints accept an email
+            // and trigger expensive server work. Returning 200 either way preserves
+            // the anti-enumeration property.
+            if (rateLimitService.tryConsumeLogin(email)) {
+                passwordResetService.requestReset(email);
+            } else {
+                log.warn("Password-reset rate-limited for email={}", email);
+            }
         }
         return ResponseEntity.ok().build();
     }
 
     /**
-     * LSB-149 / PORTAL-140: Reset password using emailed token.
+     * LSB-164: Reset password using emailed token.
+     * Returns 400 on bad / expired / re-used token (no further detail to avoid
+     * confirming the validity of a leaked token to an attacker).
      */
     @PostMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@RequestBody java.util.Map<String, String> body) {
+    public ResponseEntity<?> resetPassword(@RequestBody java.util.Map<String, String> body) {
         String token = body.getOrDefault("token", "");
         String newPassword = body.getOrDefault("newPassword", "");
         if (token.isBlank() || newPassword.isBlank()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("Token and newPassword are required.");
         }
-        log.info("Password reset attempt with token");
-        // TODO: validate token, update password (LSB-149)
-        return ResponseEntity.ok().build();
+        try {
+            passwordResetService.completeReset(token, newPassword);
+            return ResponseEntity.ok().build();
+        } catch (com.neuroforged.leadsystem.service.PasswordResetService.InvalidResetTokenException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/register")

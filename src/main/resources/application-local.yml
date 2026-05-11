@@ -57,6 +57,9 @@ neuroforged:
   cookie:
     # LSB-159: blank in local — browsers keep host-only cookies for localhost/127.0.0.1
     domain: ""
+  portal:
+    # LSB-164: used to build reset-password links in dev emails.
+    url: ${NEUROFORGED_PORTAL_URL:http://localhost:5173}
   cors:
     allowed-origins: "http://localhost:3000,http://localhost:5173"
   mail:
