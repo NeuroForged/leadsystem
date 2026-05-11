@@ -218,6 +218,9 @@ public class SampleDataSeeder implements ApplicationRunner {
                       double conversionRate, double costPerLead, double clientValue,
                       int leadScore, String challenge, String clientId, LeadStatus status,
                       LocalDateTime createdAt) {
+        // LSB-155: clientIdStr removed. Look up the Client FK from the string ID
+        // for backward compatibility with the seeder's String-based call sites.
+        Client client = clientRepository.findById(Long.parseLong(clientId)).orElse(null);
         return Lead.builder()
                 .email(email)
                 .firstName(firstName.split(" ")[0])
@@ -231,7 +234,7 @@ public class SampleDataSeeder implements ApplicationRunner {
                 .clientValue(clientValue)
                 .leadScore(leadScore)
                 .leadChallenge(challenge)
-                .clientIdStr(clientId)
+                .client(client)
                 .status(status)
                 .createdAt(createdAt)
                 .build();

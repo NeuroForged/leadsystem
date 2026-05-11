@@ -33,19 +33,9 @@ class LeadRepositoryTest {
         return clientRepository.saveAndFlush(c);
     }
 
-    private Lead buildLead(String email, String clientIdStr) {
-        return Lead.builder()
-                .email(email)
-                .clientIdStr(clientIdStr)
-                .status(LeadStatus.NEW)
-                .createdAt(LocalDateTime.now())
-                .build();
-    }
-
     private Lead buildLead(String email, Client client) {
         return Lead.builder()
                 .email(email)
-                .clientIdStr(String.valueOf(client.getId()))
                 .client(client)
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
@@ -54,16 +44,20 @@ class LeadRepositoryTest {
 
     @Test
     void save_uniqueConstraint_duplicateEmailSameClient_throws() {
-        leadRepository.saveAndFlush(buildLead("dup@example.com", "42"));
+        // LSB-153: unique constraint is now on (email, client_id) FK.
+        Client client = buildClient("dup-client");
+        leadRepository.saveAndFlush(buildLead("dup@example.com", client));
 
-        assertThatThrownBy(() -> leadRepository.saveAndFlush(buildLead("dup@example.com", "42")))
+        assertThatThrownBy(() -> leadRepository.saveAndFlush(buildLead("dup@example.com", client)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void save_sameEmail_differentClient_succeeds() {
-        Lead a = leadRepository.saveAndFlush(buildLead("shared@example.com", "1"));
-        Lead b = leadRepository.saveAndFlush(buildLead("shared@example.com", "2"));
+        Client clientA = buildClient("client-A");
+        Client clientB = buildClient("client-B");
+        Lead a = leadRepository.saveAndFlush(buildLead("shared@example.com", clientA));
+        Lead b = leadRepository.saveAndFlush(buildLead("shared@example.com", clientB));
 
         assertThat(a.getId()).isNotNull();
         assertThat(b.getId()).isNotNull();

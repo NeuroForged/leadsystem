@@ -74,13 +74,13 @@ class CalendlyAuthControllerTest {
     }
 
     @Test
-    void authorize_withoutJwt_returns403() throws Exception {
+    void authorize_withoutJwt_returns401() throws Exception {
         CalendlyAuthRequest request = new CalendlyAuthRequest();
         request.setClientId(1L);
 
         mockMvc.perform(post("/api/calendly/authorize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

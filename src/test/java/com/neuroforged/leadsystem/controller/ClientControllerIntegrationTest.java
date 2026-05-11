@@ -62,7 +62,7 @@ class ClientControllerIntegrationTest {
     }
 
     @Test
-    void createClient_withoutJwt_returns403() throws Exception {
+    void createClient_withoutJwt_returns401() throws Exception {
         ClientDto dto = new ClientDto();
         dto.setName("Unauthorized Client");
         dto.setPrimaryEmail("unauth@test.com");
@@ -70,7 +70,7 @@ class ClientControllerIntegrationTest {
         mockMvc.perform(post("/api/clients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

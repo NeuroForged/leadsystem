@@ -187,7 +187,6 @@ public class LeadServiceImpl implements LeadService {
                 .clientValue(dto.getClientValue())
                 .leadScore(dto.getLeadScore())
                 .leadChallenge(dto.getLeadChallenge())
-                .clientIdStr(dto.getClientId())
                 .client(client)
                 .status(LeadStatus.NEW)
                 .createdAt(LocalDateTime.now())
