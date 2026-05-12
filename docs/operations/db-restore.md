@@ -1,7 +1,8 @@
 # PostgreSQL backup + restore runbook
 
-**Ticket:** LSB-163
-**Last verified:** TODO — run the test-restore the first time, then update this date
+**Ticket:** LSB-163 (DB backups) / LSB-169 (log backups)
+**Last verified:** 2026-05-12 — end-to-end decrypt round-trip on `leadsystem-prod` (PGDMP magic + 145 TOC entries restored cleanly)
+**Storage Box:** `u592336.your-storagebox.de` (port 23), user `u592336`
 
 This document covers backing up and restoring the four PostgreSQL databases
 on the Hetzner Coolify host:
@@ -44,93 +45,132 @@ on the Hetzner Coolify host:
 - Stored on a Hetzner Storage Box — separate failure domain from the CX42
   host. If the server is wiped, backups survive.
 
-## First-time setup (one-off)
+## Deployed shape
 
-These steps were not yet performed at the time this doc was written. Do them
-once, then never again.
+Coolify v4's built-in database backups only target S3-compatible storage,
+which Hetzner Storage Box is not (SFTP only). The pragmatic deployment we
+shipped is **host-level cron on the CX23**, using `docker exec` to run
+`pg_dump` inside each Postgres container and SFTP'ing the encrypted dumps
+to the Storage Box.
 
-### 1. Create a Hetzner Storage Box
+```
+/etc/cron.d/alchemize-backups          host crontab (5 entries)
+/usr/local/bin/pg-backup.sh            DB backup script (LSB-163)
+/usr/local/bin/log-backup.sh           Log archive script (LSB-169)
+/root/.alchemize-backup/id_ed25519     Private SSH key for the Storage Box
+/root/.alchemize-backup/passphrase     AES-256 passphrase
+/var/log/alchemize-backup.log          DB-backup cron output
+/var/log/alchemize-log-backup.log      Log-backup cron output
+```
+
+Schedule (UTC, staggered to spread Storage Box upload load):
+- `03:00` leadsystem-db-prod → `leadsystem-prod-*.dump.gpg`
+- `03:15` leadsystem-db-dev → `leadsystem-dev-*.dump.gpg`
+- `03:30` alchemize-chatbot-prod-db → `chatbot-prod-db-*.dump.gpg`
+- `03:45` alchemize-chatbot-dev-db → `chatbot-dev-db-*.dump.gpg`
+- `04:00` log archive → `logs/logs-YYYY-MM-DD.tar.gpg` (Loki + Coolify state)
+
+DB retention: 30 days. Log retention: 14 days.
+
+## First-time setup (one-off — already done 2026-05-12)
+
+Kept here as a runbook for disaster recovery / new host migration.
+
+### 1. Create the Hetzner Storage Box
 
 In the Hetzner Cloud console:
 
-1. Storage → Storage Boxes → Create. 100 GB plan is plenty for our needs.
-2. Name it `alchemize-backups`. Region: same as the CX42 (Helsinki).
-3. After creation, note the hostname (`uXXXXXX.your-storagebox.de`) and your
-   username (`uXXXXXX`).
-4. Sub-accounts → Add sub-account for the backup script. Restrict to a single
-   SSH key (no password login).
-5. SSH → Add public key. Generate a dedicated keypair for backups
-   (`ssh-keygen -t ed25519 -f backup_id_ed25519 -C "alchemize-backups"`).
+1. Storage → Storage Boxes → Create. **BX11** (1 TB, ~€4/mo) is plenty.
+2. Name `alchemize-backups`. Location: Falkenstein (matches the CX23).
+3. Access: SSH key only (paste your ed25519 public key). Leave password blank.
+4. Additional settings:
+   - **SSH Support: ON** — required for SFTP
+   - **External Reachability: ON** — required (Cloud server ↔ Storage Box is public network)
+   - SMB Support: OFF, WebDAV Support: OFF
+5. After creation, note the hostname (`uXXXXXX.your-storagebox.de`) and
+   username (`uXXXXXX`). The SSH port is `23`, not 22.
 
-Save:
-- Storage Box hostname: ___________________
-- Backup user: ___________________
-- Public key (in Storage Box): ___________________
-- Private key (will go into Coolify secrets in step 4): see local `~/.ssh/`
-
-### 2. Generate the encryption passphrase
+### 2. Generate the encryption passphrase + backup SSH key
 
 ```bash
-openssl rand -base64 48
+openssl rand -base64 48 > BACKUP_PASSPHRASE.txt
+ssh-keygen -t ed25519 -f backup_id_ed25519 -N "" -C "alchemize-backups"
 ```
 
-Save this somewhere you can find it again — **without it the backups are
-worthless**. Recommend 1Password under "Alchemize / Infrastructure".
+Save **both** in 1Password under "Alchemize / Infrastructure / Backups".
+Without the passphrase the backups are worthless. Without the private key
+the cron can't reach the Storage Box.
 
-### 3. Mount the SSH key into Coolify
+Add the public key (`backup_id_ed25519.pub`) to the Hetzner Storage Box's
+SSH keys list.
 
-Coolify Scheduled Tasks can reference Docker secrets. For each DB service:
+### 3. Place secrets on the CX23
 
-1. In Coolify, open the DB service.
-2. Settings → Storage → Add new Storage. Mount path: `/run/secrets/backup_ssh_key`.
-3. Paste the private key content into the storage value. Mode: 0600.
-
-(Alternative: add the private key as an env var and have the script write it
-to disk on each run. Less clean but works without storage mounts.)
-
-### 4. Create a Scheduled Task per DB
-
-For each of the four databases, in Coolify:
-
-1. Open the DB service → Scheduled Tasks → Add Scheduled Task.
-2. **Cron**: `0 3 * * *` (daily at 03:00 UTC). Stagger by 15 min if you'd
-   rather not have all four run at once: leadsystem-prod 03:00,
-   leadsystem-dev 03:15, chatbot-prod 03:30, chatbot-dev 03:45.
-3. **Container**: choose `postgres-client:16` from Docker Hub (small image
-   with `pg_dump`, `gpg`, `openssh-client` pre-installed). Or run on the same
-   container as the DB if Coolify allows.
-4. **Command**: `bash /backup/pg-backup.sh`. Mount the
-   `scripts/pg-backup.sh` from this repo at `/backup/pg-backup.sh`.
-5. **Environment variables** (per-task):
-
-   ```
-   PG_HOST=<internal-postgres-service-hostname>
-   PG_PORT=5432
-   PG_USER=postgres
-   PG_PASSWORD=<from Coolify DB secrets>
-   PG_DATABASE=<DB name>
-   BACKUP_NAME_PREFIX=leadsystem-prod   # change per DB
-   STORAGE_BOX_HOST=uXXXXXX.your-storagebox.de
-   STORAGE_BOX_USER=uXXXXXX
-   SSH_KEY_PATH=/run/secrets/backup_ssh_key
-   ENCRYPTION_PASSPHRASE=<the openssl rand value from step 2>
-   RETENTION_DAYS=30
-   ```
-
-6. **Save + Run now** to verify. Tail the task log — should finish in well
-   under 60 seconds for any of our four DBs.
-
-### 5. Verify the first backup
-
-After the first scheduled run completes, SSH into the Storage Box from your
-laptop and list the files:
+SSH or use Coolify's host Terminal (Terminal → select `localhost`).
 
 ```bash
-ssh -i ~/.ssh/backup_id_ed25519 uXXXXXX@uXXXXXX.your-storagebox.de "ls -lh"
+mkdir -p /root/.alchemize-backup && chmod 700 /root/.alchemize-backup
+
+# Paste the private key + passphrase into these files (or scp them up)
+cat > /root/.alchemize-backup/id_ed25519 <<'EOF'
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+EOF
+chmod 600 /root/.alchemize-backup/id_ed25519
+
+echo 'YOUR_PASSPHRASE_HERE' > /root/.alchemize-backup/passphrase
+chmod 600 /root/.alchemize-backup/passphrase
 ```
 
-You should see one `.dump.gpg` per DB, sized between 100 KB and a few MB
-depending on the dataset.
+### 4. Drop the backup scripts in place
+
+Copy `scripts/pg-backup.sh` and `scripts/log-backup.sh` from this repo into
+`/usr/local/bin/` on the host and make them executable. Naming on host is
+`alchemize-pg-backup.sh` / `alchemize-log-backup.sh` to be unambiguous in
+process lists.
+
+```bash
+install -m 755 scripts/pg-backup.sh  /usr/local/bin/alchemize-pg-backup.sh
+install -m 755 scripts/log-backup.sh /usr/local/bin/alchemize-log-backup.sh
+```
+
+### 5. Install the cron file
+
+Write `/etc/cron.d/alchemize-backups`:
+
+```
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# LSB-163: Postgres dumps
+0  3 * * * root DB_CONTAINER=<prod-db-uuid> DB_USER=leadsystem_user DB_NAME=leadsystem    BACKUP_NAME_PREFIX=leadsystem-prod  /usr/local/bin/alchemize-pg-backup.sh >> /var/log/alchemize-backup.log 2>&1
+15 3 * * * root DB_CONTAINER=<dev-db-uuid>  DB_USER=leadsystem_dev  DB_NAME=leadsystem_dev BACKUP_NAME_PREFIX=leadsystem-dev   /usr/local/bin/alchemize-pg-backup.sh >> /var/log/alchemize-backup.log 2>&1
+30 3 * * * root DB_CONTAINER=<chat-prod>    DB_USER=postgres        DB_NAME=postgres       BACKUP_NAME_PREFIX=chatbot-prod-db  /usr/local/bin/alchemize-pg-backup.sh >> /var/log/alchemize-backup.log 2>&1
+45 3 * * * root DB_CONTAINER=<chat-dev>     DB_USER=postgres        DB_NAME=postgres       BACKUP_NAME_PREFIX=chatbot-dev-db   /usr/local/bin/alchemize-pg-backup.sh >> /var/log/alchemize-backup.log 2>&1
+
+# LSB-169: Loki + Coolify state archive
+0 4 * * * root /usr/local/bin/alchemize-log-backup.sh >> /var/log/alchemize-log-backup.log 2>&1
+```
+
+The container UUIDs are visible in `docker ps` or Coolify's resource list.
+Cron picks up `/etc/cron.d/*` automatically — no `systemctl reload` needed.
+
+### 6. Smoke-test
+
+```bash
+# Run one DB backup ad-hoc
+DB_CONTAINER=<prod-db-uuid> DB_USER=leadsystem_user DB_NAME=leadsystem \
+    BACKUP_NAME_PREFIX=leadsystem-prod /usr/local/bin/alchemize-pg-backup.sh
+
+# Run the log archive ad-hoc
+/usr/local/bin/alchemize-log-backup.sh
+
+# List on the Storage Box
+echo 'ls -la' | sftp -P 23 -i /root/.alchemize-backup/id_ed25519 \
+    u592336@u592336.your-storagebox.de
+```
 
 ## Restoring a backup
 
