@@ -148,10 +148,30 @@
 		</dependency>
 
 		<!-- Rate limiting -->
+		<!-- LSB-167: Redis-backed buckets so limits survive Coolify rollouts
+		     and work across multi-replica deploys. spring-boot-starter-data-redis
+		     pulls Lettuce (the async Redis client) which bucket4j-lettuce uses.
+		     Bumped Bucket4j 8.10.1 → 8.18.0 because the Redis modules use the
+		     post-split `bucket4j_jdk17-*` artifact naming introduced in 8.16+. -->
 		<dependency>
 			<groupId>com.bucket4j</groupId>
-			<artifactId>bucket4j-core</artifactId>
-			<version>8.10.1</version>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.18.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-redis-common</artifactId>
+			<version>8.18.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-lettuce</artifactId>
+			<version>8.18.0</version>
+		</dependency>
+		<dependency>
+			<groupId>io.lettuce</groupId>
+			<artifactId>lettuce-core</artifactId>
+			<version>6.5.5.RELEASE</version>
 		</dependency>
 
 		<!-- JSON structured logging for Loki/Promtail -->

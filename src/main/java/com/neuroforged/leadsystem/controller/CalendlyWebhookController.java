@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Map;
@@ -93,9 +94,17 @@ public class CalendlyWebhookController {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
             mac.init(new SecretKeySpec(webhookSigningKey.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
             byte[] computed = mac.doFinal(dataToSign.getBytes(StandardCharsets.UTF_8));
-            String computedHmac = HexFormat.of().formatHex(computed);
 
-            return computedHmac.equals(receivedHmac);
+            // LSB-156: constant-time comparison. String.equals leaks signature bytes
+            // by varying response time; MessageDigest.isEqual is timing-safe.
+            byte[] received;
+            try {
+                received = HexFormat.of().parseHex(receivedHmac);
+            } catch (IllegalArgumentException ex) {
+                log.warn("Rejected webhook: signature value is not valid hex");
+                return false;
+            }
+            return MessageDigest.isEqual(computed, received);
         } catch (Exception e) {
             log.error("Error verifying webhook signature", e);
             return false;

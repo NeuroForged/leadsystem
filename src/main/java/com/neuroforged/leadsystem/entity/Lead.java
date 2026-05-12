@@ -18,12 +18,17 @@ import static jakarta.persistence.EnumType.STRING;
 @Table(
         name = "lead",
         indexes = {
-                @Index(name = "idx_lead_client_id_str", columnList = "client_id_str"),
                 @Index(name = "idx_lead_score",         columnList = "lead_score"),
                 @Index(name = "idx_lead_client_id_fk",  columnList = "client_id")
         },
+        // LSB-153: in prod this is a partial unique INDEX on (email, client_id)
+        // WHERE client_id IS NOT NULL (defined in Flyway V19). JPA cannot model
+        // partial indexes, so this @UniqueConstraint is here primarily so the
+        // H2-backed test DB (ddl-auto: create-drop) gets an equivalent constraint.
+        // Hibernate `validate` in prod does not enforce unique constraints, so
+        // the partial-index semantics from Flyway take precedence.
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_lead_email_client", columnNames = {"email", "client_id_str"})
+                @UniqueConstraint(name = "uk_lead_email_client", columnNames = {"email", "client_id"})
         }
 )
 public class Lead {
@@ -52,11 +57,7 @@ public class Lead {
     @Column(length = 1000)
     private String leadChallenge;
 
-    /** Legacy string-form of the client ID (kept for backward compat). Use {@link #client} for FK access. */
-    @Column(name = "client_id_str")
-    private String clientIdStr;
-
-    /** FK to {@link Client} — populated on write from clientIdStr. Nullable for rows predating Phase 1. */
+    /** FK to {@link Client} — populated on write. Nullable for legacy rows predating LSB-89. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id")
     private Client client;
@@ -73,4 +74,14 @@ public class Lead {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    /**
+     * LSB-155: legacy string-form of the client ID. The underlying column was
+     * dropped in V20, so this is derived from the {@link #client} FK. Kept as a
+     * read-only convenience so existing call sites (notifications, routing,
+     * metrics, webhook payloads) don't need a Lombok-level refactor.
+     */
+    @jakarta.persistence.Transient
+    public String getClientIdStr() {
+        return client != null ? String.valueOf(client.getId()) : null;
+    }
 }

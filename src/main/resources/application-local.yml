@@ -54,6 +54,12 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cookie:
+    # LSB-159: blank in local — browsers keep host-only cookies for localhost/127.0.0.1
+    domain: ""
+  portal:
+    # LSB-164: used to build reset-password links in dev emails.
+    url: ${NEUROFORGED_PORTAL_URL:http://localhost:5173}
   cors:
     allowed-origins: "http://localhost:3000,http://localhost:5173"
   mail:
@@ -62,6 +68,10 @@ neuroforged:
     internal: ${NEUROFORGED_INTERNAL_TOKEN}
   encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: false
+  redis:
+    # LSB-167: local dev points at the Redis service from docker-compose.yml.
+    # Override with NEUROFORGED_REDIS_URL if running Redis elsewhere.
+    url: ${NEUROFORGED_REDIS_URL:redis://localhost:6379}
 
 rate-limit:
   requests-per-minute: 60

@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.service;
 
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.entity.LeadRoutingRule;
 import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
@@ -30,8 +31,19 @@ class LeadRoutingServiceImplTest {
     private LeadRoutingServiceImpl routingService;
 
     private Lead buildLead(String clientIdStr, String businessType) {
+        // LSB-155: Lead.getClientIdStr() is now derived from the Client FK.
+        // To preserve test semantics (routing service reads getClientIdStr()),
+        // attach a Client with id = parsed clientIdStr when it's numeric, otherwise leave null.
+        Client client = null;
+        try {
+            client = new Client();
+            client.setId(Long.parseLong(clientIdStr));
+        } catch (NumberFormatException ignored) {
+            // clientIdStr is intentionally non-numeric in the unparsable-id test
+            client = null;
+        }
         return Lead.builder()
-                .clientIdStr(clientIdStr)
+                .client(client)
                 .businessType(businessType)
                 .build();
     }

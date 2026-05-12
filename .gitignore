@@ -40,3 +40,6 @@ build/
 .claude/
 *.bak
 admin-wireframe*.html
+
+# LSB-163 backup credentials (local only — NEVER commit)
+backup-secrets/

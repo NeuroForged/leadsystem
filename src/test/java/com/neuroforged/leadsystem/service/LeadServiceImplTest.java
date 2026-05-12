@@ -98,7 +98,7 @@ class LeadServiceImplTest {
     void createLead_happyPath_returnsDto() {
         LeadRequestDTO dto = validRequest();
         Client client = new Client(); client.setId(1L); client.setName("Acme");
-        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).clientIdStr(dto.getClientId()).client(client).build();
+        Lead saved = Lead.builder().id(1L).email(dto.getEmail()).client(client).build();
         LeadResponseDTO responseDto = new LeadResponseDTO();
         responseDto.setEmail(dto.getEmail());
 
@@ -167,7 +167,7 @@ class LeadServiceImplTest {
     @Test
     @SuppressWarnings("unchecked")
     void getLeads_noFilters_returnsPagedResponse() {
-        Lead lead = Lead.builder().id(1L).email("test@example.com").clientIdStr("1").build();
+        Lead lead = Lead.builder().id(1L).email("test@example.com").build();
         LeadResponseDTO dto = new LeadResponseDTO();
         dto.setEmail("test@example.com");
 
@@ -184,7 +184,7 @@ class LeadServiceImplTest {
 
     @Test
     void updateLeadStatus_validId_updatesAndReturnsDto() {
-        Lead lead = Lead.builder().id(1L).email("test@example.com").clientIdStr("1").status(LeadStatus.NEW).build();
+        Lead lead = Lead.builder().id(1L).email("test@example.com").status(LeadStatus.NEW).build();
         LeadResponseDTO dto = new LeadResponseDTO();
         dto.setEmail("test@example.com");
 

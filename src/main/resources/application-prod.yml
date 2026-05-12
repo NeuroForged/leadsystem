@@ -54,6 +54,12 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+  cookie:
+    # LSB-159: shared across subdomains in prod/dev. Override per-env via NEUROFORGED_COOKIE_DOMAIN.
+    domain: ${NEUROFORGED_COOKIE_DOMAIN:alchemizeiq.com}
+  portal:
+    # LSB-164: used to build reset-password links in transactional emails.
+    url: ${NEUROFORGED_PORTAL_URL:https://app.alchemizeiq.com}
   cors:
     allowed-origins: ${NEUROFORGED_CORS_ALLOWED_ORIGINS}
   mail:
@@ -63,7 +69,16 @@ neuroforged:
   encryption-key: ${NEUROFORGED_ENCRYPTION_KEY:}
   seed-sample-data: ${NEUROFORGED_SEED_SAMPLE_DATA:false}
   schema-audit:
-    fail-on-drift: false
+    # LSB-168: post V20/V21, entity↔DB mapping is in a clean state. Abort
+    # startup on drift so the next entity-without-migration footgun is loud
+    # instead of buried in WARN logs. Override with NEUROFORGED_SCHEMA_AUDIT_FAIL=false
+    # if a future migration needs to deploy ahead of the entity that backs it.
+    fail-on-drift: ${NEUROFORGED_SCHEMA_AUDIT_FAIL:true}
+  redis:
+    # LSB-167: Redis URL for the Bucket4j rate-limit ProxyManager. Set in
+    # Coolify alongside the leadsystem service (small Redis service on the
+    # same project network).
+    url: ${REDIS_URL}
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM:60}

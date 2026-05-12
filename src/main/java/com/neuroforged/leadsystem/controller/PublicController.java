@@ -1,14 +1,17 @@
 package com.neuroforged.leadsystem.controller;
 
+import com.neuroforged.leadsystem.config.RateLimitService;
 import com.neuroforged.leadsystem.dto.ContactRequest;
 import com.neuroforged.leadsystem.dto.NewsletterRequest;
 import com.neuroforged.leadsystem.entity.NewsletterSubscriber;
 import com.neuroforged.leadsystem.repository.NewsletterSubscriberRepository;
 import com.neuroforged.leadsystem.service.EmailService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +33,7 @@ public class PublicController {
 
     private final EmailService emailService;
     private final NewsletterSubscriberRepository newsletterRepo;
+    private final RateLimitService rateLimitService;
 
     @Value("${neuroforged.admin.email}")
     private String adminEmail;
@@ -37,9 +41,19 @@ public class PublicController {
     /**
      * POST /api/contact — handles website contact form submissions.
      * Sends an email notification to the admin inbox.
+     * LSB-161: rate-limited to 5/hour/IP.
      */
     @PostMapping("/contact")
-    public ResponseEntity<Map<String, Boolean>> contact(@Valid @RequestBody ContactRequest req) {
+    public ResponseEntity<Map<String, Object>> contact(@Valid @RequestBody ContactRequest req,
+                                                       HttpServletRequest request) {
+        String ip = clientIp(request);
+        if (!rateLimitService.tryConsumePublic("contact", ip)) {
+            log.warn("Contact form rate-limited for ip={}", ip);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "3600")
+                    .body(Map.of("ok", false, "error", "rate_limited"));
+        }
+
         log.info("Contact form submission from name={} email={} company={} source={}",
                 req.getName(), req.getEmail(), req.getCompany(), req.getSource());
 
@@ -59,9 +73,19 @@ public class PublicController {
     /**
      * POST /api/newsletter — idempotent newsletter signup.
      * Duplicate emails return 200 without creating a new record.
+     * LSB-161: rate-limited to 5/hour/IP.
      */
     @PostMapping("/newsletter")
-    public ResponseEntity<Map<String, Boolean>> newsletter(@Valid @RequestBody NewsletterRequest req) {
+    public ResponseEntity<Map<String, Object>> newsletter(@Valid @RequestBody NewsletterRequest req,
+                                                          HttpServletRequest request) {
+        String ip = clientIp(request);
+        if (!rateLimitService.tryConsumePublic("newsletter", ip)) {
+            log.warn("Newsletter signup rate-limited for ip={}", ip);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "3600")
+                    .body(Map.of("ok", false, "error", "rate_limited"));
+        }
+
         String email = req.getEmail().toLowerCase().strip();
         log.info("Newsletter signup email={} source={}", email, req.getSource());
 
@@ -78,6 +102,19 @@ public class PublicController {
         }
 
         return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /**
+     * Best-effort client IP extraction.
+     * Honours {@code X-Forwarded-For} (Coolify / nginx terminate TLS), falls back to remoteAddr.
+     */
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            int comma = forwarded.indexOf(',');
+            return (comma >= 0 ? forwarded.substring(0, comma) : forwarded).trim();
+        }
+        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 
     private String buildContactEmailBody(ContactRequest req) {
