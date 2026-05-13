@@ -58,6 +58,13 @@ public class ClientServiceImpl implements ClientService {
         if (dto.getAccentColor() != null) client.setAccentColor(dto.getAccentColor());
         if (dto.getWebhookUrl() != null) client.setWebhookUrl(dto.getWebhookUrl());
         if (dto.getWebhookSecret() != null) client.setWebhookSecret(dto.getWebhookSecret());
+        if (dto.getMode() != null) {
+            String mode = dto.getMode().toUpperCase();
+            if (!"COMPANY".equals(mode) && !"AGENCY".equals(mode)) {
+                throw new IllegalArgumentException("mode must be COMPANY or AGENCY");
+            }
+            client.setMode(mode);
+        }
         return clientMapper.toDto(clientRepository.save(client));
     }
 

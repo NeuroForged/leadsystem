@@ -1,22 +1,35 @@
 package com.neuroforged.leadsystem.security;
 
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.User;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JwtUtilTest {
 
     private static final String SECRET = "test-jwt-secret-that-is-at-least-32-chars-long-for-hmac";
 
     private JwtUtil jwtUtil;
+    private ClientRepository clientRepository;
     private User user;
 
     @BeforeEach
     void setUp() {
         // LSB-162: enforce-iss-aud=false → grace-mode validator, matches prod defaults.
-        jwtUtil = new JwtUtil(SECRET, false);
+        clientRepository = mock(ClientRepository.class);
+        // LSB-170: default the mode lookup to COMPANY for tests that don't override.
+        Client defaultClient = new Client();
+        defaultClient.setMode("COMPANY");
+        when(clientRepository.findById(anyLong())).thenReturn(Optional.of(defaultClient));
+        jwtUtil = new JwtUtil(SECRET, false, clientRepository);
         user = User.builder()
                 .id(1L)
                 .email("admin@test.com")
@@ -45,7 +58,7 @@ class JwtUtilTest {
 
     @Test
     void validateToken_tokenSignedWithDifferentSecret_returnsFalse() {
-        JwtUtil otherUtil = new JwtUtil("completely-different-secret-that-is-long-enough", false);
+        JwtUtil otherUtil = new JwtUtil("completely-different-secret-that-is-long-enough", false, clientRepository);
         String foreignToken = otherUtil.generateToken(user);
         assertThat(jwtUtil.validateToken(foreignToken)).isFalse();
     }
@@ -124,5 +137,50 @@ class JwtUtilTest {
                 .build();
         String token = jwtUtil.generateToken(noRoleUser);
         assertThat(jwtUtil.extractRole(token)).isNull();
+    }
+
+    // ── LSB-170: mode claim ──────────────────────────────────────────────────
+
+    @Test
+    void generateToken_clientUser_includesAgencyModeClaim() {
+        Client agency = new Client();
+        agency.setMode("AGENCY");
+        when(clientRepository.findById(42L)).thenReturn(Optional.of(agency));
+
+        User clientUser = User.builder()
+                .id(2L).email("c@test.com").password("hashed").role("CLIENT").clientId(42L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        assertThat(jwtUtil.extractMode(token)).isEqualTo("AGENCY");
+    }
+
+    @Test
+    void generateToken_clientUserDefaultsToCompanyMode() {
+        Client co = new Client();
+        co.setMode("COMPANY");
+        when(clientRepository.findById(7L)).thenReturn(Optional.of(co));
+
+        User clientUser = User.builder()
+                .id(3L).email("c@test.com").password("hashed").role("CLIENT").clientId(7L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        assertThat(jwtUtil.extractMode(token)).isEqualTo("COMPANY");
+    }
+
+    @Test
+    void generateToken_adminUserHasNoModeClaim() {
+        // ADMIN tokens carry no clientId, so no mode is stamped either.
+        String token = jwtUtil.generateToken(user);
+        assertThat(jwtUtil.extractMode(token)).isNull();
+    }
+
+    @Test
+    void generateToken_clientLookupFailureFallsBackToCompany() {
+        when(clientRepository.findById(99L)).thenThrow(new RuntimeException("db down"));
+        User clientUser = User.builder()
+                .id(4L).email("c@test.com").password("hashed").role("CLIENT").clientId(99L)
+                .build();
+        String token = jwtUtil.generateToken(clientUser);
+        assertThat(jwtUtil.extractMode(token)).isEqualTo("COMPANY");
     }
 }

@@ -1,7 +1,9 @@
 package com.neuroforged.leadsystem.security;
 
+import com.neuroforged.leadsystem.entity.Client;
 import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import com.neuroforged.leadsystem.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +41,15 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        jwtUtil = new JwtUtil(SECRET, false);
+        ClientRepository clientRepository = mock(ClientRepository.class);
+        Client defaultClient = new Client();
+        defaultClient.setMode("COMPANY");
+        // Only tokens with a clientId trigger the mode lookup; some tests below
+        // never call generateToken with one, so mark this stub lenient to keep
+        // Mockito's strict-stubs mode quiet across the suite.
+        org.mockito.Mockito.lenient()
+                .when(clientRepository.findById(any())).thenReturn(Optional.of(defaultClient));
+        jwtUtil = new JwtUtil(SECRET, false, clientRepository);
 
         var jwtField = JwtAuthenticationFilter.class.getDeclaredField("jwtUtil");
         jwtField.setAccessible(true);
