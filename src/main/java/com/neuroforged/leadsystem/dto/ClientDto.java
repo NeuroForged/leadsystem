@@ -32,6 +32,7 @@ public class ClientDto {
     private String webhookUrl;
     private String webhookSecret;
 
+    private String mode;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

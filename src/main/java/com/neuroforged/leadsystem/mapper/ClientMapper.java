@@ -39,6 +39,7 @@ public class ClientMapper {
         dto.setAccentColor(client.getAccentColor());
         dto.setWebhookUrl(client.getWebhookUrl());
         dto.setWebhookSecret(client.getWebhookSecret());
+        dto.setMode(client.getMode());
 
         String emails = client.getNotificationEmails();
         dto.setNotificationEmails(emails == null || emails.isBlank()

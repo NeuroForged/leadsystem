@@ -84,4 +84,16 @@ public class ClientController {
         log.info("Rotating API key for client id={}", id);
         return ResponseEntity.ok(clientService.rotateApiKey(id));
     }
+
+    // LSB-170: dedicated endpoint so the chatbot UI can flip a tenant between
+    // COMPANY and AGENCY modes without round-tripping the full ClientDto.
+    @PatchMapping("/{id}/mode")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ClientDto> updateMode(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        ClientDto patch = new ClientDto();
+        patch.setMode(body.get("mode"));
+        return ResponseEntity.ok(clientService.updateClient(id, patch));
+    }
 }

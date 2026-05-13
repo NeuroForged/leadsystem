@@ -46,6 +46,9 @@ public class Client {
     @Column(length = 200)
     private String firefliesWebhookSecret;
 
+    @Column(nullable = false, length = 20)
+    private String mode = "COMPANY";
+
     @PrePersist
     private void generateApiKey() {
         if (apiKey == null) {

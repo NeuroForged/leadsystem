@@ -1,6 +1,7 @@
 package com.neuroforged.leadsystem.security;
 
 import com.neuroforged.leadsystem.entity.User;
+import com.neuroforged.leadsystem.repository.ClientRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class JwtUtil {
 
     private final Key key;
     private final boolean enforceIssAud;
+    private final ClientRepository clientRepository;
 
     public JwtUtil(
             @org.springframework.beans.factory.annotation.Autowired
@@ -36,9 +38,11 @@ public class JwtUtil {
             // LSB-162: false during the grace window — accept tokens with or without
             // iss/aud claims so old sessions don't get logged out. Flip to true after
             // existing tokens have aged out (max refresh lifetime = 7 days).
-            @Value("${neuroforged.jwt.enforce-iss-aud:false}") boolean enforceIssAud) {
+            @Value("${neuroforged.jwt.enforce-iss-aud:false}") boolean enforceIssAud,
+            ClientRepository clientRepository) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.enforceIssAud = enforceIssAud;
+        this.clientRepository = clientRepository;
     }
 
     public String generateToken(User user) {
@@ -53,6 +57,7 @@ public class JwtUtil {
                 .signWith(key, SignatureAlgorithm.HS256);
         if (user.getClientId() != null) {
             builder.claim("clientId", user.getClientId());
+            builder.claim("mode", resolveMode(user.getClientId()));
         }
         return builder.compact();
     }
@@ -69,8 +74,22 @@ public class JwtUtil {
                 .signWith(key, SignatureAlgorithm.HS256);
         if (user.getClientId() != null) {
             builder.claim("clientId", user.getClientId());
+            builder.claim("mode", resolveMode(user.getClientId()));
         }
         return builder.compact();
+    }
+
+    // LSB-170: looks up the current product mode for the tenant. Failures default
+    // to COMPANY so a transient DB blip doesn't lock the user out — the worst
+    // case is the next refresh corrects it.
+    private String resolveMode(Long clientId) {
+        try {
+            return clientRepository.findById(clientId)
+                    .map(c -> c.getMode() == null ? "COMPANY" : c.getMode())
+                    .orElse("COMPANY");
+        } catch (Exception e) {
+            return "COMPANY";
+        }
     }
 
     public long getAccessTokenMaxAge() {
@@ -96,6 +115,11 @@ public class JwtUtil {
             return null;
         }
         return claim instanceof Number n ? n.longValue() : Long.valueOf(claim.toString());
+    }
+
+    public String extractMode(String token) {
+        Object claim = getClaims(token).get("mode");
+        return claim == null ? null : claim.toString();
     }
 
     public boolean validateToken(String token) {
