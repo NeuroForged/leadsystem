@@ -7,6 +7,7 @@ import com.neuroforged.leadsystem.entity.Lead;
 import com.neuroforged.leadsystem.logging.BusinessEventLogger;
 import com.neuroforged.leadsystem.metrics.LeadSystemMetrics;
 import com.neuroforged.leadsystem.service.OutboundWebhookService;
+import com.neuroforged.leadsystem.util.SafeUrl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -32,13 +33,23 @@ public class OutboundWebhookServiceImpl implements OutboundWebhookService {
     private final BusinessEventLogger eventLogger;
     private final LeadSystemMetrics metrics;
 
-    @Async
+    @Async("backgroundTaskExecutor")
     @Override
     public void notifyWebhook(Lead lead, Client client) {
         String webhookUrl = client.getWebhookUrl();
         String clientIdStr = String.valueOf(client.getId());
         if (webhookUrl == null || webhookUrl.isBlank()) {
             metrics.recordOutboundWebhook(clientIdStr, "skipped");
+            return;
+        }
+
+        // SSRF guard: only deliver to https URLs whose host resolves to a public IP.
+        // Blocks loopback/link-local/private/CGNAT/cloud-metadata targets supplied via
+        // the client-controlled webhookUrl field.
+        if (!SafeUrl.isPublicHttps(webhookUrl)) {
+            log.warn("Outbound webhook blocked for client {} lead {} — webhookUrl is not an https public address",
+                    clientIdStr, lead.getId());
+            metrics.recordOutboundWebhook(clientIdStr, "blocked");
             return;
         }
 

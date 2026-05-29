@@ -24,7 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmailService emailService;
     private final WebClient.Builder webClientBuilder;
 
-    @Async
+    @Async("backgroundTaskExecutor")
     @Override
     public void notify(Long clientId, NotificationEventType event, Map<String, String> context) {
         List<NotificationChannel> channels = channelRepository.findByClientIdAndEvent(clientId, event);

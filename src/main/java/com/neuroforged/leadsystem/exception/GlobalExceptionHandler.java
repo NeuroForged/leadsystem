@@ -16,8 +16,9 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -159,16 +160,35 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    // Fallback handler for all other exceptions
+    // Malformed date filter params (e.g. ?from=yesterday) → 400, not a 500.
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<ErrorResponse> handleDateTimeParseException(DateTimeParseException ex, WebRequest request) {
+        log.warn("Invalid date parameter: {}", ex.getMessage());
+
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                "Invalid date format. Use ISO-8601 (yyyy-MM-dd).",
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    // Fallback handler for all other exceptions. Never echo the raw exception message
+    // to the client (it can leak SQL fragments, table/column names, internal paths).
+    // Log the detail server-side under a correlation id and return only that id.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllOtherExceptions(Exception ex, WebRequest request) {
-        log.error("Unhandled exception: ", ex);
+        String correlationId = UUID.randomUUID().toString();
+        log.error("Unhandled exception [correlationId={}]: ", correlationId, ex);
 
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                ex.getMessage(),
+                "An unexpected error occurred. Reference: " + correlationId,
                 request.getDescription(false)
         );
 

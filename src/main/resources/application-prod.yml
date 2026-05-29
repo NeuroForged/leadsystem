@@ -90,7 +90,8 @@ scraper:
 
 logging:
   level:
-    com.neuroforged.leadsystem: DEBUG
+    # Default INFO in prod; flip to DEBUG temporarily via NEUROFORGED_LOG_LEVEL when troubleshooting.
+    com.neuroforged.leadsystem: ${NEUROFORGED_LOG_LEVEL:INFO}
     org.springframework: WARN
     org.springframework.security: WARN
     org.hibernate: WARN

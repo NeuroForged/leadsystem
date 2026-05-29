@@ -34,8 +34,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/login", "/auth/register", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/login", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
+                        // /auth/register creates accounts — admin-only (internal B2B dashboard,
+                        // no public self-serve signup). Enforced at the method level too.
+                        .requestMatchers("/auth/register").hasRole("ADMIN")
                         .requestMatchers("/auth/me", "/auth/password").authenticated()
                         // LSB-158: /actuator/health stays public for Coolify probes.
                         // /actuator/prometheus + other actuator endpoints require ADMIN auth so

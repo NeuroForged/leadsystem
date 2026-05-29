@@ -32,12 +32,11 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
     @Override
     @Transactional
     public CalendlyAuthResponse generateAuthorizationUrl(Long clientId) {
-        log.info("CalendlyAuthService.generateAuthorizationUrl()");
+        log.info("Generating Calendly authorization URL for clientId={}", clientId);
         String state = UUID.randomUUID().toString();
 
-        // Persist the state with clientId
+        // Persist the state with clientId. Do not log the state value (CSRF token).
         clientOAuthStateService.saveOAuthState(state, clientId);
-        log.info("after saved state: {}, clientId: {}", state, clientId);
         String authorizationUrl = calendlyApiClient.exchangeAuthCodeForTokens(state);
 
         return new CalendlyAuthResponse(authorizationUrl, state);
@@ -46,12 +45,12 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
     @Override
     @Transactional
     public void handleOAuthCallback(CalendlyOAuthRequest request) {
-        log.info("Handling Calendly OAuth callback with code={} and state={}", request.getCode(), request.getState());
+        // Never log the OAuth authorization code or CSRF state (single-use creds / replayable).
+        log.info("Handling Calendly OAuth callback");
         Optional<Long> clientIdOpt = clientOAuthStateService.findClientIdByOAuthState(request.getState());
 
-        log.info("ClientIdOpt = {}", clientIdOpt);
         if (clientIdOpt.isEmpty()) {
-            log.warn("Invalid or expired OAuth state: {}", request.getState());
+            log.warn("Invalid or expired OAuth state on Calendly callback");
             throw new IllegalArgumentException("Invalid or expired OAuth state");
         }
 
@@ -78,9 +77,7 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
                 .build();
 
         calendlyAccountRepository.save(account);
-        log.info("calendlyintegrationrepository.findbystate({})",request.getState());
         calendlyIntegrationRepository.findByState(request.getState()).ifPresent(integration -> {
-            log.info("client: {}, id: {}, state: {}", integration.getClient(), integration.getId(), integration.getState());
             integration.setCompleted(true);
             calendlyIntegrationRepository.save(integration);
         });

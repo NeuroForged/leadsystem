@@ -30,7 +30,8 @@ public class ClientMapper {
         dto.setName(client.getName());
         dto.setPrimaryEmail(client.getPrimaryEmail());
         dto.setWebsiteUrl(client.getWebsiteUrl());
-        dto.setApiKey(client.getApiKey());
+        // Security: never expose the chatbot apiKey on read/list responses. It is
+        // re-attached explicitly only on create / rotate (one-time reveal) by the service.
         dto.setCreatedAt(client.getCreatedAt());
         dto.setUpdatedAt(client.getUpdatedAt());
         dto.setLastScrapedAt(client.getLastScrapedAt());
@@ -38,7 +39,8 @@ public class ClientMapper {
         dto.setLogoUrl(client.getLogoUrl());
         dto.setAccentColor(client.getAccentColor());
         dto.setWebhookUrl(client.getWebhookUrl());
-        dto.setWebhookSecret(client.getWebhookSecret());
+        // Security: webhookSecret is the shared HMAC signing secret — never return it
+        // in any Client API response. It remains writable via the request DTO.
         dto.setMode(client.getMode());
 
         String emails = client.getNotificationEmails();

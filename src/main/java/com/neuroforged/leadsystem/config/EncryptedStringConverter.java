@@ -32,7 +32,10 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
         String base64Key = System.getProperty("neuroforged.encryption-key",
                 System.getenv("NEUROFORGED_ENCRYPTION_KEY"));
         if (base64Key == null || base64Key.isBlank()) {
-            log.warn("NEUROFORGED_ENCRYPTION_KEY not set — Calendly tokens will NOT be encrypted");
+            // Do NOT silently degrade to plaintext. The constructor stays non-fatal so
+            // profiles that never touch encrypted columns still boot, but any actual
+            // encrypt/decrypt with no key configured fails loudly (see requireKey()).
+            log.warn("NEUROFORGED_ENCRYPTION_KEY not set — encrypted columns will fail fast on use");
             this.secretKey = null;
         } else {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
@@ -40,9 +43,18 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
         }
     }
 
+    private void requireKey() {
+        if (secretKey == null) {
+            throw new IllegalStateException(
+                    "NEUROFORGED_ENCRYPTION_KEY is not set — refusing to read/write encrypted columns "
+                            + "in plaintext. Configure a Base64-encoded 32-byte AES key.");
+        }
+    }
+
     @Override
     public String convertToDatabaseColumn(String plaintext) {
-        if (plaintext == null || secretKey == null) return plaintext;
+        if (plaintext == null) return null;
+        requireKey();
         try {
             byte[] iv = new byte[GCM_IV_LENGTH];
             new SecureRandom().nextBytes(iv);
@@ -63,7 +75,8 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     @Override
     public String convertToEntityAttribute(String encrypted) {
-        if (encrypted == null || secretKey == null) return encrypted;
+        if (encrypted == null) return null;
+        requireKey();
         try {
             byte[] combined = Base64.getDecoder().decode(encrypted);
             byte[] iv = new byte[GCM_IV_LENGTH];

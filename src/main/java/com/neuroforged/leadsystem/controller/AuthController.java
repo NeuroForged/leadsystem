@@ -197,6 +197,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> register(@RequestBody AuthenticationRequest request) {
         log.info("Attempting to Register new user: {}", request.getEmail());
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {

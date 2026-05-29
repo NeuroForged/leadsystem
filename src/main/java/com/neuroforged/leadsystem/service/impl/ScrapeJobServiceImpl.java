@@ -72,6 +72,20 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ScrapeJobZip downloadZip(Long id) {
+        ScrapeJob job = scrapeJobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ScrapeJob not found: " + id));
+
+        if (job.getScraperJobId() == null) {
+            throw new ResourceNotFoundException("ScrapeJob " + id + " has no scraper job id — nothing to download");
+        }
+
+        byte[] data = scraperService.downloadZip(job.getScraperJobId());
+        return new ScrapeJobZip(job.getClient().getId(), data);
+    }
+
+    @Override
     @Transactional
     public ScrapeJobDto syncStatus(Long id) {
         ScrapeJob job = scrapeJobRepository.findById(id)

@@ -62,10 +62,18 @@ public class LeadServiceImpl implements LeadService {
             throw e;
         }
 
-        String clientName = resolveClientName(dto.getClientId());
-
         Client resolvedClient = resolveClient(dto.getClientId());
-        if (resolvedClient != null && leadRepository.existsByEmailAndClient_Id(dto.getEmail(), resolvedClient.getId())) {
+        if (resolvedClient == null) {
+            // Reject rather than silently persisting an orphan lead (client = null) that
+            // also bypasses the per-client duplicate guard / partial unique index.
+            InvalidLeadException ex = new InvalidLeadException(
+                    "clientId '" + dto.getClientId() + "' does not resolve to a known client.");
+            eventLogger.leadInvalid(null, dto.getClientId(), ex.getMessage(), dto.getEmail());
+            throw ex;
+        }
+        String clientName = resolvedClient.getName();
+
+        if (leadRepository.existsByEmailAndClient_Id(dto.getEmail(), resolvedClient.getId())) {
             eventLogger.leadDuplicate(clientName, dto.getClientId(), dto.getEmail());
             metrics.recordLeadDuplicate(dto.getClientId());
             throw new DuplicateResourceException(
@@ -86,28 +94,35 @@ public class LeadServiceImpl implements LeadService {
 
         leadNotificationService.notifyNewLead(savedLead);
 
-        try {
-            Client c = resolvedClient != null ? resolvedClient : savedLead.getClient();
-            if (c != null) {
-                final Client finalClient = c;
+        // Post-save side effects are best-effort: the lead is already persisted, so a delivery
+        // failure must not fail the request. Each channel is isolated in its own try/catch so a
+        // bug in one (e.g. NPE) is distinguishable from a transient delivery failure in another
+        // and doesn't suppress the rest.
+        Client finalClient = resolvedClient != null ? resolvedClient : savedLead.getClient();
+        if (finalClient != null) {
+            try {
                 outboundWebhookService.notifyWebhook(savedLead, finalClient);
-                Map<String, String> ctx = buildLeadContext(savedLead);
+            } catch (Exception e) {
+                log.warn("Outbound webhook dispatch failed for lead {}: {}", savedLead.getId(), e.getMessage());
+            }
+
+            Map<String, String> ctx = buildLeadContext(savedLead);
+            try {
                 notificationService.notify(finalClient.getId(), NotificationEventType.NEW_LEAD, ctx);
-                if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
+            } catch (Exception e) {
+                log.warn("NEW_LEAD notification failed for lead {}: {}", savedLead.getId(), e.getMessage());
+            }
+
+            if (savedLead.getLeadScore() != null && savedLead.getLeadScore() >= HIGH_SCORE_THRESHOLD) {
+                try {
                     notificationService.notify(finalClient.getId(), NotificationEventType.LEAD_SCORED_HIGH, ctx);
+                } catch (Exception e) {
+                    log.warn("LEAD_SCORED_HIGH notification failed for lead {}: {}", savedLead.getId(), e.getMessage());
                 }
             }
-        } catch (Exception e) {
-            log.warn("Outbound webhook/notification skipped for lead {} - client lookup failed: {}", savedLead.getId(), e.getMessage());
         }
 
         return leadMapper.toDto(savedLead);
-    }
-
-    /** Best-effort client name lookup for event logging — never throws. */
-    private String resolveClientName(String clientId) {
-        Client c = resolveClient(clientId);
-        return c != null ? c.getName() : null;
     }
 
     /** Best-effort Client entity lookup — returns null if id is unparseable or not found. */

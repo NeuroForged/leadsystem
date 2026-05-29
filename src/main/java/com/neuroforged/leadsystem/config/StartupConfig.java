@@ -47,7 +47,13 @@ public class StartupConfig {
                 log.info("✅ Admin user created: {}", adminEmail);
             } else {
                 User admin = existing.get();
-                if (!admin.getPassword().equals(encodedPassword)) {
+                // Compare the configured password against the stored bcrypt hash. Using
+                // matches() (not equals on a freshly-encoded hash, which has a new random
+                // salt each boot) avoids rewriting the row + a misleading log on every deploy.
+                boolean upToDate = isBcryptHash(adminPassword)
+                        ? admin.getPassword().equals(adminPassword)
+                        : passwordEncoder.matches(adminPassword, admin.getPassword());
+                if (!upToDate) {
                     admin.setPassword(encodedPassword);
                     userRepository.save(admin);
                     log.warn("⚠️ Admin password updated");

@@ -31,7 +31,10 @@ public class ClientServiceImpl implements ClientService {
     public ClientDto createClient(ClientDto dto) {
         Client client = clientMapper.toEntity(dto);
         Client saved = clientRepository.save(client);
-        return clientMapper.toDto(saved);
+        ClientDto result = clientMapper.toDto(saved);
+        // One-time reveal: surface the apiKey on create so the admin can hand it to the chatbot.
+        result.setApiKey(saved.getApiKey());
+        return result;
     }
 
     @Override
@@ -109,6 +112,9 @@ public class ClientServiceImpl implements ClientService {
         String newKey = UUID.randomUUID().toString().replace("-", "");
         clientRepository.updateApiKey(id, newKey);
         log.info("API key rotated for client id={}", id);
-        return clientMapper.toDto(clientRepository.findById(id).orElseThrow());
+        ClientDto result = clientMapper.toDto(clientRepository.findById(id).orElseThrow());
+        // One-time reveal: return the freshly rotated key so the admin can copy it.
+        result.setApiKey(newKey);
+        return result;
     }
 }

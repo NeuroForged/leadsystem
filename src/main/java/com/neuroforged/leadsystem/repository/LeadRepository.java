@@ -34,6 +34,20 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
 
     Optional<Lead> findByEmailAndClient_Id(String email, Long clientId);
 
+    /**
+     * Batch resolve (email, clientId) → leadId for meeting→lead matching, replacing the
+     * per-row {@code findByEmailAndClient_Id} N+1. Returns {@code [id, email, clientId]} rows;
+     * caller keys on email+clientId.
+     */
+    @Query("""
+            SELECT l.id, l.email, l.client.id
+            FROM Lead l
+            WHERE l.email IN :emails AND l.client.id IN :clientIds
+            """)
+    List<Object[]> findIdEmailClientByEmailsAndClientIds(
+            @Param("emails") List<String> emails,
+            @Param("clientIds") List<Long> clientIds);
+
     // ── Analytics aggregation queries ────────────────────────────────────────
 
     @Query(value = """

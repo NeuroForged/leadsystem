@@ -1,7 +1,8 @@
 package com.neuroforged.leadsystem.audit;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.neuroforged.leadsystem.entity.AuditEvent;
 import com.neuroforged.leadsystem.repository.AuditEventRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -109,17 +110,50 @@ public class AuditAspect {
         return null;
     }
 
+    /** Field-name substrings (lower-cased) whose values must never be persisted to the audit log. */
+    private static final String[] SENSITIVE_FIELD_TOKENS =
+            {"password", "token", "secret", "apikey", "authorization"};
+    private static final String REDACTED = "***REDACTED***";
+
     private String serializeArgs(Object[] args) {
         if (args == null || args.length == 0) return null;
         for (Object arg : args) {
             if (arg != null && !(arg instanceof HttpServletRequest)) {
                 try {
-                    return objectMapper.writeValueAsString(arg);
-                } catch (JsonProcessingException e) {
-                    return arg.toString();
+                    JsonNode node = objectMapper.valueToTree(arg);
+                    redact(node);
+                    return objectMapper.writeValueAsString(node);
+                } catch (Exception e) {
+                    // Never fall back to a raw toString() — it could leak unredacted credentials.
+                    return null;
                 }
             }
         }
         return null;
+    }
+
+    /** Recursively replace the value of any field whose name contains a sensitive token. */
+    private void redact(JsonNode node) {
+        if (node == null) return;
+        if (node.isObject()) {
+            ObjectNode obj = (ObjectNode) node;
+            obj.fieldNames().forEachRemaining(name -> {
+                if (isSensitive(name)) {
+                    obj.put(name, REDACTED);
+                } else {
+                    redact(obj.get(name));
+                }
+            });
+        } else if (node.isArray()) {
+            node.forEach(this::redact);
+        }
+    }
+
+    private boolean isSensitive(String fieldName) {
+        String lower = fieldName.toLowerCase();
+        for (String token : SENSITIVE_FIELD_TOKENS) {
+            if (lower.contains(token)) return true;
+        }
+        return false;
     }
 }

@@ -11,14 +11,17 @@ import com.neuroforged.leadsystem.service.MeetingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,32 +37,41 @@ public class MeetingServiceImpl implements MeetingService {
 
         ZonedDateTime fromDt = from != null ? java.time.LocalDate.parse(from).atStartOfDay(ZoneId.of("UTC")) : null;
         ZonedDateTime toDt = to != null ? java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.of("UTC")) : null;
+        String invitee = (inviteeEmail != null && !inviteeEmail.isBlank()) ? inviteeEmail.trim() : null;
 
-        Page<CalendlyMeeting> meetingPage;
-        if (clientId != null && fromDt != null) {
-            meetingPage = meetingRepository.findByClient_IdAndStartTimeBetween(clientId, fromDt, toDt, pageable);
-        } else if (clientId != null) {
-            meetingPage = meetingRepository.findByClient_Id(clientId, pageable);
-        } else if (fromDt != null) {
-            meetingPage = meetingRepository.findByStartTimeBetween(fromDt, toDt, pageable);
-        } else {
-            meetingPage = meetingRepository.findAll(pageable);
-        }
+        // Single query-level filter (invitee included) so pagination counts are correct and
+        // matches across all pages are returned; client is fetch-joined to avoid N+1.
+        Page<CalendlyMeeting> meetingPage = meetingRepository.search(clientId, fromDt, toDt, invitee, pageable);
 
-        // Apply inviteeEmail filter in memory if needed
-        List<MeetingResponseDTO> dtos;
-        if (inviteeEmail != null && !inviteeEmail.isBlank()) {
-            String emailFilter = inviteeEmail.toLowerCase();
-            dtos = meetingPage.getContent().stream()
-                    .filter(m -> m.getInviteeEmail() != null && m.getInviteeEmail().toLowerCase().contains(emailFilter))
-                    .map(this::toDto)
-                    .toList();
-            Page<MeetingResponseDTO> filtered = new PageImpl<>(dtos, pageable, dtos.size());
-            return PagedResponse.from(filtered);
-        }
-
-        Page<MeetingResponseDTO> mapped = meetingPage.map(this::toDto);
+        Map<String, Long> leadIdByEmailClient = resolveLeadIds(meetingPage.getContent());
+        Page<MeetingResponseDTO> mapped = meetingPage.map(m -> toDto(m, leadIdByEmailClient));
         return PagedResponse.from(mapped);
+    }
+
+    /** One IN-query to resolve leadId for every (inviteeEmail, clientId) pair on the page. */
+    private Map<String, Long> resolveLeadIds(List<CalendlyMeeting> meetings) {
+        Set<String> emails = new LinkedHashSet<>();
+        Set<Long> clientIds = new LinkedHashSet<>();
+        for (CalendlyMeeting m : meetings) {
+            if (m.getInviteeEmail() != null && m.getClient() != null) {
+                emails.add(m.getInviteeEmail());
+                clientIds.add(m.getClient().getId());
+            }
+        }
+        if (emails.isEmpty() || clientIds.isEmpty()) {
+            return Map.of();
+        }
+        return leadRepository
+                .findIdEmailClientByEmailsAndClientIds(List.copyOf(emails), List.copyOf(clientIds))
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> leadKey((String) row[1], (Long) row[2]),
+                        row -> (Long) row[0],
+                        (a, b) -> a));
+    }
+
+    private static String leadKey(String email, Long clientId) {
+        return email + "|" + clientId;
     }
 
     @Override
@@ -77,6 +89,7 @@ public class MeetingServiceImpl implements MeetingService {
         return toDto(meetingRepository.save(meeting));
     }
 
+    /** Single-meeting path (get-by-id / update): one targeted lookup is fine. */
     private MeetingResponseDTO toDto(CalendlyMeeting m) {
         Long leadId = null;
         if (m.getInviteeEmail() != null && m.getClient() != null) {
@@ -84,7 +97,18 @@ public class MeetingServiceImpl implements MeetingService {
                     .map(l -> l.getId())
                     .orElse(null);
         }
+        return toDto(m, leadId);
+    }
 
+    /** List path: leadId already batch-resolved into {@code leadIds}. */
+    private MeetingResponseDTO toDto(CalendlyMeeting m, Map<String, Long> leadIds) {
+        Long leadId = (m.getInviteeEmail() != null && m.getClient() != null)
+                ? leadIds.get(leadKey(m.getInviteeEmail(), m.getClient().getId()))
+                : null;
+        return toDto(m, leadId);
+    }
+
+    private MeetingResponseDTO toDto(CalendlyMeeting m, Long leadId) {
         return MeetingResponseDTO.builder()
                 .id(m.getId())
                 .calendlyUri(m.getCalendlyUri())

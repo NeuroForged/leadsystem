@@ -36,6 +36,9 @@ public class LeadController {
     private static final Set<String> ALLOWED_SORT_FIELDS =
             Set.of("createdAt", "leadScore", "email", "status", "businessName", "customerType");
 
+    /** Upper bound on page size to prevent unbounded-result memory exhaustion. */
+    private static final int MAX_PAGE_SIZE = 200;
+
     private final LeadService leadService;
     private final LeadCommentService leadCommentService;
 
@@ -67,9 +70,13 @@ public class LeadController {
 
         Sort resolvedSort = parseSort(sort);
         Long resolvedClientId = AuthPrincipalUtil.resolveClientIdForCaller(clientId);
-        Pageable pageable = PageRequest.of(page, size, resolvedSort);
+        // Cap page size to avoid unbounded materialization (memory-exhaustion DoS) and
+        // guard against negative page/size from the query string.
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, resolvedSort);
         log.info("Fetching leads -- clientId={}, status={}, search={}, from={}, to={}, page={}, size={}, sort={}",
-                resolvedClientId, status, search, from, to, page, size, sort);
+                resolvedClientId, status, search, from, to, safePage, safeSize, sort);
         return ResponseEntity.ok(leadService.getLeads(resolvedClientId, status, search, from, to, pageable));
     }
 
@@ -134,8 +141,17 @@ public class LeadController {
 
     /** Resolves the lead's clientId (stored as String for DTO compat) to Long and asserts access. */
     private void assertCanAccessLead(LeadResponseDTO lead) {
-        if (lead.getClientId() != null) {
-            AuthPrincipalUtil.assertCanAccessClient(Long.parseLong(lead.getClientId()));
+        if (lead.getClientId() == null) {
+            return;
         }
+        final Long clientId;
+        try {
+            clientId = Long.parseLong(lead.getClientId());
+        } catch (NumberFormatException e) {
+            // Legacy/free-string clientId that isn't numeric: treat as not-found rather than
+            // surfacing a 500. Fails closed for CLIENT callers.
+            throw new com.neuroforged.leadsystem.exception.ResourceNotFoundException("Lead not found");
+        }
+        AuthPrincipalUtil.assertCanAccessClient(clientId);
     }
 }

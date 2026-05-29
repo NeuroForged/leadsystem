@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +33,13 @@ import java.util.zip.ZipInputStream;
 @Service
 @RequiredArgsConstructor
 public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
+
+    // Zip-bomb guards for the scraper KB archive. The source is internal/trusted,
+    // but reading via readAllBytes() with no cap means a compromised/buggy scraper
+    // response could exhaust memory. Decompress through a bounded copy instead.
+    private static final int MAX_ZIP_ENTRIES = 5_000;
+    private static final long MAX_ENTRY_BYTES = 10L * 1024 * 1024;        // 10 MB per .md doc
+    private static final long MAX_TOTAL_INFLATED_BYTES = 200L * 1024 * 1024; // 200 MB total
 
     private final KnowledgeBaseDocumentRepository kbRepository;
     private final ScrapeJobRepository scrapeJobRepository;
@@ -68,10 +76,21 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             List<KnowledgeBaseDocument> docs = new ArrayList<>();
             try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
                 ZipEntry entry;
+                int entryCount = 0;
+                long totalInflated = 0;
                 while ((entry = zis.getNextEntry()) != null) {
+                    if (++entryCount > MAX_ZIP_ENTRIES) {
+                        throw new IllegalStateException("KB zip exceeds max entry count " + MAX_ZIP_ENTRIES);
+                    }
                     String name = entry.getName();
                     if (name.endsWith(".md")) {
-                        String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                        byte[] bytes = readEntryBounded(zis);
+                        totalInflated += bytes.length;
+                        if (totalInflated > MAX_TOTAL_INFLATED_BYTES) {
+                            throw new IllegalStateException(
+                                    "KB zip exceeds max total inflated size " + MAX_TOTAL_INFLATED_BYTES + " bytes");
+                        }
+                        String content = new String(bytes, StandardCharsets.UTF_8);
                         int wordCount = content.isBlank() ? 0
                                 : Arrays.stream(content.trim().split("\\s+")).mapToInt(w -> 1).sum();
 
@@ -99,7 +118,27 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         }
     }
 
-    @Async
+    /**
+     * Reads a single zip entry into memory, aborting if the inflated size exceeds
+     * {@link #MAX_ENTRY_BYTES}. Guards against a single oversized/zip-bomb entry without
+     * trusting the (forgeable) {@link ZipEntry#getSize()} header.
+     */
+    private static byte[] readEntryBounded(ZipInputStream zis) throws java.io.IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        long total = 0;
+        int read;
+        while ((read = zis.read(chunk)) != -1) {
+            total += read;
+            if (total > MAX_ENTRY_BYTES) {
+                throw new IllegalStateException("KB zip entry exceeds max size " + MAX_ENTRY_BYTES + " bytes");
+            }
+            buffer.write(chunk, 0, read);
+        }
+        return buffer.toByteArray();
+    }
+
+    @Async("backgroundTaskExecutor")
     @Override
     public void fetchAsync(Long clientId, String jobId) {
         statusStore.put(jobId, KbFetchJobStatus.running(jobId));
