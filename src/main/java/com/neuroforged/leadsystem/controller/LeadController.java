@@ -34,7 +34,7 @@ import java.util.Set;
 public class LeadController {
 
     private static final Set<String> ALLOWED_SORT_FIELDS =
-            Set.of("createdAt", "leadScore", "email", "status", "businessName", "customerType");
+            Set.of("id", "createdAt", "leadScore", "email", "status", "businessName", "customerType");
 
     /** Upper bound on page size to prevent unbounded-result memory exhaustion. */
     private static final int MAX_PAGE_SIZE = 200;
