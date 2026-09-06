@@ -44,6 +44,7 @@ public class SecurityConfig {
                         // /actuator/prometheus + other actuator endpoints require ADMIN auth so
                         // metric labels (customer counts, error rates) aren't world-readable.
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/.well-known/jwks.json").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/api/contact", "/api/newsletter").permitAll()
                         .requestMatchers("/api/leads/**").authenticated()

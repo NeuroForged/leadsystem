@@ -1,5 +1,8 @@
 package com.neuroforged.leadsystem.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.Map;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -64,6 +67,13 @@ public class Lead {
 
     @Enumerated(STRING)
     private LeadStatus status;
+
+    /** Everything the chatbot captured, verbatim (BUG-3). The typed columns above are
+     *  the agency-template projection; vertical templates (dental, real estate, …)
+     *  capture fields that have no column, and used to be discarded. */
+    @JdbcTypeCode(SqlTypes.JSON)   // jsonb on Postgres; portable on H2 (tests) — no columnDefinition
+    @Column(name = "captured_fields")
+    private Map<String, String> capturedFields;
 
     @Column(length = 1000)
     private String relevantKbSnippet;
