@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.dto;
 
+import java.util.Map;
 import com.neuroforged.leadsystem.entity.LeadStatus;
 import lombok.Data;
 
@@ -23,6 +24,7 @@ public class LeadResponseDTO {
     private String leadChallenge;
     private String clientId;
     private LeadStatus status;
+    private Map<String, String> capturedFields;
     private String relevantKbSnippet;
     private String assignedTo;
     private LocalDateTime createdAt;

@@ -1,5 +1,12 @@
 package com.neuroforged.leadsystem.security;
 
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import com.neuroforged.leadsystem.entity.User;
 import com.neuroforged.leadsystem.repository.ClientRepository;
 import io.jsonwebtoken.*;
@@ -28,21 +35,87 @@ public class JwtUtil {
     );
     private static final Set<String> AUDIENCES_SET = Set.copyOf(AUDIENCES);
 
+    /** Signing key: RSA private key when configured (RS256), else the shared HMAC secret. */
     private final Key key;
+    /** Verification key: the RSA public key, or the same HMAC secret. */
+    private final Key verifyKey;
+    private final SignatureAlgorithm algorithm;
+    private final RSAPublicKey rsaPublicKey;   // non-null only in RS256 mode; served at /.well-known/jwks.json
     private final boolean enforceIssAud;
     private final ClientRepository clientRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired   // two constructors: this is the one Spring uses
     public JwtUtil(
-            @org.springframework.beans.factory.annotation.Autowired
             @Value("${neuroforged.jwt.secret}") String secret,
             // LSB-162: false during the grace window — accept tokens with or without
             // iss/aud claims so old sessions don't get logged out. Flip to true after
             // existing tokens have aged out (max refresh lifetime = 7 days).
             @Value("${neuroforged.jwt.enforce-iss-aud:false}") boolean enforceIssAud,
+            // Asymmetric signing: PEM (or base64 of the PEM) of an RSA private key. When
+            // set, tokens are RS256 and verifiers (chatbot) only ever hold the PUBLIC key —
+            // a compromised verifier can no longer mint tokens. Unset = legacy HS256.
+            @Value("${neuroforged.jwt.private-key:}") String privateKeyPem,
             ClientRepository clientRepository) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
         this.enforceIssAud = enforceIssAud;
         this.clientRepository = clientRepository;
+        if (privateKeyPem != null && !privateKeyPem.isBlank()) {
+            PrivateKey priv = loadPrivateKey(privateKeyPem);
+            RSAPublicKey pub = derivePublicKey(priv);
+            this.key = priv;
+            this.verifyKey = pub;
+            this.rsaPublicKey = pub;
+            this.algorithm = SignatureAlgorithm.RS256;
+        } else {
+            Key hmac = Keys.hmacShaKeyFor(secret.getBytes());
+            this.key = hmac;
+            this.verifyKey = hmac;
+            this.rsaPublicKey = null;
+            this.algorithm = SignatureAlgorithm.HS256;
+        }
+    }
+
+    /** Legacy HS256-only constructor (tests + any caller that predates asymmetric signing). */
+    public JwtUtil(String secret, boolean enforceIssAud, ClientRepository clientRepository) {
+        this(secret, enforceIssAud, "", clientRepository);
+    }
+
+    public boolean isAsymmetric() {
+        return rsaPublicKey != null;
+    }
+
+    public RSAPublicKey getRsaPublicKey() {
+        return rsaPublicKey;
+    }
+
+    private static String stripPem(String pem, String label) {
+        String body = pem.trim();
+        if (!body.contains("-----BEGIN")) {
+            // base64 of the whole PEM (convenient for env vars)
+            body = new String(Base64.getDecoder().decode(body)).trim();
+        }
+        return body.replace("-----BEGIN " + label + "-----", "")
+                   .replace("-----END " + label + "-----", "")
+                   .replaceAll("\\s", "");
+    }
+
+    private static PrivateKey loadPrivateKey(String pem) {
+        try {
+            byte[] der = Base64.getDecoder().decode(stripPem(pem, "PRIVATE KEY"));
+            return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
+        } catch (Exception e) {
+            throw new IllegalStateException("neuroforged.jwt.private-key is not a PKCS#8 RSA private key", e);
+        }
+    }
+
+    private static RSAPublicKey derivePublicKey(PrivateKey priv) {
+        try {
+            java.security.interfaces.RSAPrivateCrtKey crt = (java.security.interfaces.RSAPrivateCrtKey) priv;
+            java.security.spec.RSAPublicKeySpec spec =
+                    new java.security.spec.RSAPublicKeySpec(crt.getModulus(), crt.getPublicExponent());
+            return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not derive the RSA public key from the private key", e);
+        }
     }
 
     public String generateToken(User user) {
@@ -54,7 +127,7 @@ public class JwtUtil {
                 .claim("type", "access")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(key, SignatureAlgorithm.HS256);
+                .signWith(key, algorithm);
         if (user.getClientId() != null) {
             builder.claim("clientId", user.getClientId());
             builder.claim("mode", resolveMode(user.getClientId()));
@@ -71,7 +144,7 @@ public class JwtUtil {
                 .claim("type", "refresh")
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_TIME))
-                .signWith(key, SignatureAlgorithm.HS256);
+                .signWith(key, algorithm);
         if (user.getClientId() != null) {
             builder.claim("clientId", user.getClientId());
             builder.claim("mode", resolveMode(user.getClientId()));
@@ -169,7 +242,7 @@ public class JwtUtil {
 
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key)
+                .setSigningKey(verifyKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

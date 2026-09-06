@@ -56,6 +56,8 @@ neuroforged:
     password: ${NEUROFORGED_ADMIN_PASSWORD}
   jwt:
     secret: ${NEUROFORGED_JWT_SECRET}
+    # RS256 when set (PEM or base64-of-PEM, PKCS#8). Verifiers use /.well-known/jwks.json.
+    private-key: ${NEUROFORGED_JWT_PRIVATE_KEY:}
   cookie:
     # LSB-159: shared across subdomains in prod/dev. Override per-env via NEUROFORGED_COOKIE_DOMAIN.
     domain: ${NEUROFORGED_COOKIE_DOMAIN:alchemizeiq.com}

@@ -1,5 +1,7 @@
 package com.neuroforged.leadsystem.dto;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -51,6 +53,10 @@ public class LeadRequestDTO {
     @NotBlank(message = "Client ID is required")
     private String clientId;
 
+    /** Optional free-form map of everything the capturing channel collected. Bounded in
+     *  sanitize(): at most 40 keys, keys ≤ 64 chars, values ≤ 500 chars. */
+    private Map<String, String> capturedFields;
+
     public void sanitize() {
         if (email != null) email = email.trim().toLowerCase();
         if (businessName != null) businessName = businessName.trim();
@@ -59,5 +65,16 @@ public class LeadRequestDTO {
         if (trafficSource != null) trafficSource = trafficSource.trim();
         if (leadChallenge != null) leadChallenge = leadChallenge.trim();
         if (clientId != null) clientId = clientId.trim();
+        if (capturedFields != null) {
+            Map<String, String> bounded = new LinkedHashMap<>();
+            for (Map.Entry<String, String> e : capturedFields.entrySet()) {
+                if (bounded.size() >= 40) break;
+                if (e.getKey() == null || e.getKey().isBlank()) continue;
+                String k = e.getKey().trim();
+                String v = e.getValue() == null ? "" : e.getValue();
+                bounded.put(k.length() > 64 ? k.substring(0, 64) : k, v.length() > 500 ? v.substring(0, 500) : v);
+            }
+            capturedFields = bounded;
+        }
     }
 }
