@@ -1,5 +1,7 @@
 package com.neuroforged.leadsystem.service.impl;
 
+import com.neuroforged.leadsystem.util.SafeUrl;
+import java.time.Duration;
 import com.neuroforged.leadsystem.entity.NotificationChannel;
 import com.neuroforged.leadsystem.entity.NotificationEventType;
 import com.neuroforged.leadsystem.repository.NotificationChannelRepository;
@@ -45,6 +47,12 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private void sendSlack(String webhookUrl, String message) {
+        // Same guard as outbound webhooks: no internal destinations, and never block a
+        // bounded executor thread forever on a host that accepts TCP and goes quiet.
+        if (!SafeUrl.isPublicHttps(webhookUrl)) {
+            log.warn("Refusing Slack webhook to non-public URL");
+            return;
+        }
         String body = "{\"text\": " + escapeJson(message) + "}";
         webClientBuilder.build()
                 .post()
@@ -53,6 +61,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .bodyValue(body)
                 .retrieve()
                 .toBodilessEntity()
+                .timeout(Duration.ofSeconds(5))
                 .block();
         log.debug("Slack notification sent to {}", webhookUrl);
     }

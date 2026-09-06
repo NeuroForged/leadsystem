@@ -33,7 +33,8 @@ public class MeetingServiceImpl implements MeetingService {
 
     @Override
     public PagedResponse<MeetingResponseDTO> getMeetings(Long clientId, String from, String to, String inviteeEmail, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        // Cap like LeadController does; size came straight from the query string.
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200));
 
         ZonedDateTime fromDt = from != null ? java.time.LocalDate.parse(from).atStartOfDay(ZoneId.of("UTC")) : null;
         ZonedDateTime toDt = to != null ? java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.of("UTC")) : null;

@@ -43,7 +43,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public LeadKpiDTO getLeadKpis(Long clientId, String from, String to) {
         long leads = leadRepository.countFiltered(clientId, from, to);
         long meetings = clientId != null
-                ? meetingRepository.findByClient_Id(clientId).size()
+                ? meetingRepository.countByClient_Id(clientId)
                 : meetingRepository.count();
         double avgScore = leadRepository.avgLeadScore(clientId, from, to);
         long highQuality = leadRepository.countHighQuality(clientId, from, to);
@@ -97,7 +97,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public List<TopLeadDTO> getTopLeads(Long clientId, int limit) {
-        var pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "leadScore"));
+        var pageable = PageRequest.of(0, Math.min(Math.max(limit, 1), 200), Sort.by(Sort.Direction.DESC, "leadScore"));
         var page = clientId != null
                 ? leadRepository.findByClient_Id(clientId, pageable)
                 : leadRepository.findAll(pageable);

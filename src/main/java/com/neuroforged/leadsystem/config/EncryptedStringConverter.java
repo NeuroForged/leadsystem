@@ -77,8 +77,20 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
     public String convertToEntityAttribute(String encrypted) {
         if (encrypted == null) return null;
         requireKey();
+        byte[] combined;
         try {
-            byte[] combined = Base64.getDecoder().decode(encrypted);
+            combined = Base64.getDecoder().decode(encrypted);
+        } catch (IllegalArgumentException e) {
+            // Not Base64 at all: a pre-migration plaintext value. The only case in which
+            // returning the stored string is correct.
+            log.warn("Stored value is not encrypted (pre-migration plaintext); returning as-is.");
+            return encrypted;
+        }
+        if (combined.length <= GCM_IV_LENGTH) {
+            log.warn("Stored value too short to be ciphertext (pre-migration plaintext); returning as-is.");
+            return encrypted;
+        }
+        try {
             byte[] iv = new byte[GCM_IV_LENGTH];
             byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH];
             System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
@@ -88,8 +100,11 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
             cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             return new String(cipher.doFinal(ciphertext));
         } catch (Exception e) {
-            log.warn("Failed to decrypt value — token may be plaintext (pre-migration). Returning as-is.");
-            return encrypted;
+            // A GCM tag failure means the wrong key (rotated / mis-set), not plaintext.
+            // Returning the ciphertext here handed Base64 garbage to Calendly as a bearer
+            // token, which then cascaded into re-auth for every client. Fail loudly.
+            throw new IllegalStateException(
+                    "Failed to decrypt stored value — NEUROFORGED_ENCRYPTION_KEY does not match the data", e);
         }
     }
 }
