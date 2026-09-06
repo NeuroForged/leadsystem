@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neuroforged.leadsystem.dto.CalendlyWebhookPayload;
 import com.neuroforged.leadsystem.entity.*;
@@ -43,7 +44,7 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
         CalendlyWebhookLog log_ = CalendlyWebhookLog.builder()
                 .event(payload.getEvent())
                 .headers(headers.toString())
-                .payload(payload.toString())
+                .payload(serialise(payload))
                 .receivedAt(ZonedDateTime.now(ZoneId.of("UTC")))
                 .retryCount(0)
                 .build();
@@ -58,6 +59,18 @@ public class CalendlyWebhookServiceImpl implements CalendlyWebhookService {
         }
 
         webhookLogRepository.save(log_);
+    }
+
+    /** The stored payload is re-parsed by the retry scheduler, so it must be JSON — not
+     *  Lombok's toString(), which made every retry fail on JsonParseException before
+     *  processing was even attempted. */
+    private String serialise(CalendlyWebhookPayload payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            log.warn("Could not serialise Calendly webhook payload for the retry log: {}", e.getMessage());
+            return "{}";
+        }
     }
 
     @Override

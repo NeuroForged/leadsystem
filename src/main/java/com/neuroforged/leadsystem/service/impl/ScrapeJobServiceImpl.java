@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// No method here is @Transactional on purpose: each one calls the scraper over HTTP with a
+// 15-120 s timeout, and holding a pooled connection for that long let a slow scraper drain
+// Hikari and take /auth/login down with it. Repository saves commit on their own.
 public class ScrapeJobServiceImpl implements ScrapeJobService {
 
     private final ScrapeJobRepository scrapeJobRepository;
@@ -31,7 +34,6 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     private final ScrapeJobMapper scrapeJobMapper;
 
     @Override
-    @Transactional
     public ScrapeJobDto createJob(Long clientId, String url, Integer maxPages, String initiatedBy) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found: " + clientId));
@@ -54,7 +56,6 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     }
 
     @Override
-    @Transactional
     public ScrapeJobDto getJob(Long id) {
         ScrapeJob job = scrapeJobRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ScrapeJob not found: " + id));
@@ -72,7 +73,6 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ScrapeJobZip downloadZip(Long id) {
         ScrapeJob job = scrapeJobRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ScrapeJob not found: " + id));
@@ -86,7 +86,6 @@ public class ScrapeJobServiceImpl implements ScrapeJobService {
     }
 
     @Override
-    @Transactional
     public ScrapeJobDto syncStatus(Long id) {
         ScrapeJob job = scrapeJobRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ScrapeJob not found: " + id));

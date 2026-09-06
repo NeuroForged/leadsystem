@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.service.impl;
 
+import org.springframework.transaction.support.TransactionTemplate;
 import com.neuroforged.leadsystem.dto.KbDocumentDto;
 import com.neuroforged.leadsystem.dto.KbFetchJobStatus;
 import com.neuroforged.leadsystem.entity.KnowledgeBaseDocument;
@@ -48,10 +49,12 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final KbDocumentMapper kbDocumentMapper;
     private final KbFetchStatusStore statusStore;
     private final LeadSystemMetrics metrics;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
-    @Transactional
     public List<KbDocumentDto> fetchAndStore(Long clientId) {
+        // Not @Transactional: the 120 s scraper download must not hold a DB connection.
+        // The delete+insert below runs in its own short transaction once the bytes are here.
         io.micrometer.core.instrument.Timer.Sample sample = metrics.startKbFetchTimer();
         boolean success = false;
         try {
@@ -70,8 +73,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             if (zipBytes == null || zipBytes.length == 0) {
                 throw new ResourceNotFoundException("Scraper returned empty ZIP for job " + latestJob.getScraperJobId());
             }
-
-            kbRepository.deleteByClientId(clientId);
 
             List<KnowledgeBaseDocument> docs = new ArrayList<>();
             try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
@@ -109,7 +110,10 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 throw new RuntimeException("Failed to extract KB zip: " + e.getMessage(), e);
             }
 
-            kbRepository.saveAll(docs);
+            transactionTemplate.executeWithoutResult(tx -> {
+                kbRepository.deleteByClientId(clientId);
+                kbRepository.saveAll(docs);
+            });
             log.info("Stored {} KB documents for clientId={}", docs.size(), clientId);
             success = true;
             return docs.stream().map(kbDocumentMapper::toDto).toList();

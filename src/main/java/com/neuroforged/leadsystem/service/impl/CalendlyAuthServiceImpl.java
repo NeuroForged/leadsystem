@@ -65,16 +65,17 @@ public class CalendlyAuthServiceImpl implements CalendlyAuthService {
                 tokenResponse.getOrganization(),
                 com.neuroforged.leadsystem.security.LogMasking.mask(tokenResponse.getAccessToken()),
                 com.neuroforged.leadsystem.security.LogMasking.mask(tokenResponse.getRefreshToken()));
-        CalendlyAccount account = CalendlyAccount.builder()
-                .accessToken(tokenResponse.getAccessToken())
-                .refreshToken(tokenResponse.getRefreshToken())
-                .owner(tokenResponse.getOwner())
-                .ownerType(tokenResponse.getOwnerType())
-                .organization(tokenResponse.getOrganization())
-                .clientId(clientId)
-                .tokenIssuedAt(LocalDateTime.now())
-                .requiresReauth(false)
-                .build();
+        // Upsert: client_id is UNIQUE, and re-authentication (the path the "please
+        // reconnect" email sends the admin down) used to insert a second row and 500.
+        CalendlyAccount account = calendlyAccountRepository.findByClientId(clientId)
+                .orElseGet(() -> CalendlyAccount.builder().clientId(clientId).build());
+        account.setAccessToken(tokenResponse.getAccessToken());
+        account.setRefreshToken(tokenResponse.getRefreshToken());
+        account.setOwner(tokenResponse.getOwner());
+        account.setOwnerType(tokenResponse.getOwnerType());
+        account.setOrganization(tokenResponse.getOrganization());
+        account.setTokenIssuedAt(LocalDateTime.now());
+        account.setRequiresReauth(false);
 
         calendlyAccountRepository.save(account);
         calendlyIntegrationRepository.findByState(request.getState()).ifPresent(integration -> {

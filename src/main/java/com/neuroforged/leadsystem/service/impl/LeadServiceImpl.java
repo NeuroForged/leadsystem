@@ -1,5 +1,6 @@
 package com.neuroforged.leadsystem.service.impl;
 
+import org.springframework.data.domain.PageRequest;
 import com.neuroforged.leadsystem.dto.LeadRequestDTO;
 import com.neuroforged.leadsystem.dto.LeadResponseDTO;
 import com.neuroforged.leadsystem.dto.PagedResponse;
@@ -158,7 +159,8 @@ public class LeadServiceImpl implements LeadService {
             throw new InvalidLeadException("Client ID must not be null.");
         }
 
-        return leadRepository.findByClient_Id(clientId).stream()
+        // Bounded: this used to materialise every lead a client ever had.
+        return leadRepository.findByClient_Id(clientId, PageRequest.of(0, 500)).stream()
                 .map(leadMapper::toDto)
                 .collect(Collectors.toList());
     }

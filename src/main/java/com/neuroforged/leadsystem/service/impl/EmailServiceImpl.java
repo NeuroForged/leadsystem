@@ -37,7 +37,9 @@ public class EmailServiceImpl implements EmailService {
 
             mailSender.send(message);
 
-            log.info("✅ Email sent to {}\nSubject: {}\nBody:\n{}", to, subject, body);
+            // The body is not logged: password-reset links (and customer data) went
+            // through here, so anyone with log access could take over an account.
+            log.info("✅ Email sent to {} subject=\"{}\" ({} chars)", to, subject, body == null ? 0 : body.length());
         } catch (MessagingException e) {
             log.error("❌ Failed to send email to {}: {}", to, e.getMessage(), e);
             throw new EmailSendException("Failed to send email to " + to, e);

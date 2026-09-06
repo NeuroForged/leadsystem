@@ -19,6 +19,8 @@ public interface CalendlyMeetingRepository extends JpaRepository<CalendlyMeeting
     List<CalendlyMeeting> findByInviteeEmail(String email);
     List<CalendlyMeeting> findByClient_Id(Long clientId);
 
+    long countByClient_Id(Long clientId);
+
     /**
      * Unified, query-level meeting search with all filters optional. Pushing the invitee filter
      * into SQL (rather than filtering a fetched page in memory) keeps pagination counts correct
