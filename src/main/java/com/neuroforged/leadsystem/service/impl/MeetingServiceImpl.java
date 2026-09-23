@@ -38,7 +38,8 @@ public class MeetingServiceImpl implements MeetingService {
 
         ZonedDateTime fromDt = from != null ? java.time.LocalDate.parse(from).atStartOfDay(ZoneId.of("UTC")) : null;
         ZonedDateTime toDt = to != null ? java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.of("UTC")) : null;
-        String invitee = (inviteeEmail != null && !inviteeEmail.isBlank()) ? inviteeEmail.trim() : null;
+        String invitee = (inviteeEmail != null && !inviteeEmail.isBlank())
+                ? "%" + inviteeEmail.trim().toLowerCase(java.util.Locale.ROOT) + "%" : "%";
 
         // Single query-level filter (invitee included) so pagination counts are correct and
         // matches across all pages are returned; client is fetch-joined to avoid N+1.
