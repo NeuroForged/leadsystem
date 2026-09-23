@@ -30,25 +30,37 @@ public class LeadRequestDTO {
 
     @Min(value = 0, message = "Monthly leads must be at least 0")
     @Max(value = 10000, message = "Monthly leads seems unrealistically high")
-    private int monthlyLeads;
+    private Integer monthlyLeads;
 
     @DecimalMin(value = "0.00001", inclusive = true, message = "Conversion rate must be greater than 0")
     @DecimalMax(value = "100.0", message = "Conversion rate must be less than or equal to 100")
-    private double conversionRate;
+    private Double conversionRate;
 
     @DecimalMin(value = "0.01", message = "Cost per lead must be greater than 0")
-    private double costPerLead;
+    private Double costPerLead;
 
     @DecimalMin(value = "0.01", message = "Client value must be greater than 0")
-    private double clientValue;
+    private Double clientValue;
 
     @Min(value = 1)
     @Max(value = 100)
-    private int leadScore;
+    private Integer leadScore;
 
     @NotBlank(message = "Lead challenge is required")
     @Size(max = 250, message = "Lead challenge must be under 250 characters")
     private String leadChallenge;
+
+    /** Optional: the visitor's name when the channel captured one. */
+    @Size(max = 100, message = "First name must be under 100 characters")
+    private String firstName;
+
+    /** Optional: the chatbot session that produced this lead, so the Portal can show its transcript. */
+    @Size(max = 64, message = "Chat session id must be under 64 characters")
+    private String chatSessionId;
+
+    /** Optional: why the lead scored what it did, in plain English (shown on the lead in the Portal). */
+    @Size(max = 500, message = "Score basis must be under 500 characters")
+    private String scoreBasis;
 
     @NotBlank(message = "Client ID is required")
     private String clientId;
@@ -65,6 +77,9 @@ public class LeadRequestDTO {
         if (trafficSource != null) trafficSource = trafficSource.trim();
         if (leadChallenge != null) leadChallenge = leadChallenge.trim();
         if (clientId != null) clientId = clientId.trim();
+        if (firstName != null) firstName = firstName.trim();
+        if (chatSessionId != null) chatSessionId = chatSessionId.trim();
+        if (scoreBasis != null) scoreBasis = scoreBasis.trim();
         if (capturedFields != null) {
             Map<String, String> bounded = new LinkedHashMap<>();
             for (Map.Entry<String, String> e : capturedFields.entrySet()) {

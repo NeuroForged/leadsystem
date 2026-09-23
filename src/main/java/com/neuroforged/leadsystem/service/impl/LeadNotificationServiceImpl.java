@@ -26,30 +26,32 @@ public class LeadNotificationServiceImpl implements LeadNotificationService {
 
     @Override
     public void notifyNewLead(Lead lead) {
-        String subject = "New Lead Received - " + lead.getEmail() + " - " + lead.getLeadScore() + "/100";
-        String body = String.format("""
-            Email: %s
-            Customer Type: %s
-            Business Name: %s
-            Business Type: %s
-            Monthly Leads: %s
-            Traffic Source: %s
-            Conversion Rate: %s
-            Cost Per Lead: %s
-            Client Value: %s
-            Lead Challenge: %s
-            Client ID: %s
-            Created At: %s
-            """,
-            lead.getEmail(), lead.getCustomerType(), lead.getBusinessName(),
-            lead.getBusinessType(), lead.getMonthlyLeads(), lead.getTrafficSource(),
-            lead.getConversionRate(), lead.getCostPerLead(), lead.getClientValue(),
-            lead.getLeadChallenge(), lead.getClientIdStr(), lead.getCreatedAt());
+        String score = lead.getLeadScore() == null ? "unscored" : lead.getLeadScore() + "/100";
+        String subject = "New Lead Received - " + lead.getEmail() + " - " + score;
+        StringBuilder body = new StringBuilder();
+        line(body, "Email", lead.getEmail());
+        line(body, "Name", lead.getFirstName());
+        line(body, "Customer Type", lead.getCustomerType());
+        line(body, "Business Name", lead.getBusinessName());
+        line(body, "Business Type", lead.getBusinessType());
+        line(body, "Traffic Source", lead.getTrafficSource());
+        line(body, "Monthly Leads", lead.getMonthlyLeads());
+        line(body, "Conversion Rate", lead.getConversionRate());
+        line(body, "Cost Per Lead", lead.getCostPerLead());
+        line(body, "Client Value", lead.getClientValue());
+        line(body, "Lead Challenge", lead.getLeadChallenge());
+        if (lead.getCapturedFields() != null && !lead.getCapturedFields().isEmpty()) {
+            body.append("\nCaptured by the bot:\n");
+            lead.getCapturedFields().forEach((k, v) -> body.append("  ").append(k.replace('_', ' ')).append(": ").append(v).append('\n'));
+        }
+        body.append('\n');
+        line(body, "Client ID", lead.getClientIdStr());
+        line(body, "Created At", lead.getCreatedAt());
 
         String[] recipients = resolveRecipients(lead.getClientIdStr());
 
         try {
-            emailService.sendLeadToMultiple(recipients, subject, body);
+            emailService.sendLeadToMultiple(recipients, subject, body.toString());
         } catch (EmailSendException e) {
             log.warn("Failed to send notification email: {}", e.getMessage(), e);
         }
@@ -70,5 +72,11 @@ public class LeadNotificationServiceImpl implements LeadNotificationService {
             log.warn("Could not parse clientId '{}' as Long, falling back to admin email", clientId);
             return new String[]{fallbackEmail};
         }
+    }
+
+    /** Skips absent values so a patient lead does not arrive full of "Cost Per Lead: null". */
+    private static void line(StringBuilder sb, String label, Object value) {
+        if (value == null || value.toString().isBlank()) return;
+        sb.append(label).append(": ").append(value).append('\n');
     }
 }

@@ -6,6 +6,7 @@ import com.neuroforged.leadsystem.exception.ResourceNotFoundException;
 import com.neuroforged.leadsystem.mapper.ClientMapper;
 import com.neuroforged.leadsystem.repository.CalendlyAccountRepository;
 import com.neuroforged.leadsystem.repository.ClientRepository;
+import com.neuroforged.leadsystem.repository.LeadRepository;
 import com.neuroforged.leadsystem.service.ClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,6 +29,7 @@ public class ClientServiceImpl implements ClientService {
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
     private final CalendlyAccountRepository calendlyAccountRepository;
+    private final LeadRepository leadRepository;
 
     @Override
     public ClientDto createClient(ClientDto dto) {
@@ -39,9 +43,11 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     public ClientDto getClientDtoById(Long clientId) {
-        return clientRepository.findById(clientId)
+        ClientDto dto = clientRepository.findById(clientId)
                 .map(clientMapper::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with ID: " + clientId));
+        dto.setLastLeadAt(lastLeadAt(List.of(clientId)).get(clientId));
+        return dto;
     }
 
     @Override
@@ -87,8 +93,13 @@ public class ClientServiceImpl implements ClientService {
         Set<Long> connectedIds = calendlyAccountRepository
                 .findAllByClientIdIn(clients.stream().map(Client::getId).collect(Collectors.toSet()))
                 .stream().map(ca -> ca.getClientId()).collect(Collectors.toSet());
+        Map<Long, LocalDateTime> lastLead = lastLeadAt(clients.stream().map(Client::getId).toList());
         return clients.stream()
-                .map(c -> clientMapper.toDto(c, connectedIds.contains(c.getId())))
+                .map(c -> {
+                    ClientDto dto = clientMapper.toDto(c, connectedIds.contains(c.getId()));
+                    dto.setLastLeadAt(lastLead.get(c.getId()));
+                    return dto;
+                })
                 .toList();
     }
 
@@ -116,5 +127,14 @@ public class ClientServiceImpl implements ClientService {
         // One-time reveal: return the freshly rotated key so the admin can copy it.
         result.setApiKey(newKey);
         return result;
+    }
+
+    private Map<Long, LocalDateTime> lastLeadAt(List<Long> clientIds) {
+        if (clientIds.isEmpty()) return Map.of();
+        Map<Long, LocalDateTime> out = new HashMap<>();
+        for (Object[] row : leadRepository.findLastLeadAtByClientIds(clientIds)) {
+            if (row[0] != null && row[1] != null) out.put((Long) row[0], (LocalDateTime) row[1]);
+        }
+        return out;
     }
 }

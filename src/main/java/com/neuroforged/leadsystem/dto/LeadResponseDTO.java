@@ -21,6 +21,8 @@ public class LeadResponseDTO {
     private Double costPerLead;
     private Double clientValue;
     private Integer leadScore;
+    private String chatSessionId;
+    private String scoreBasis;
     private String leadChallenge;
     private String clientId;
     private LeadStatus status;
