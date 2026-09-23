@@ -41,6 +41,11 @@ public class CalendlyTokenRefreshServiceImpl implements CalendlyTokenRefreshServ
     }
 
     private boolean needsRefresh(CalendlyAccount account) {
+        // Personal access tokens have no refresh token and do not expire. Trying to refresh one
+        // failed, flagged the account "requires re-auth" and stopped all polling.
+        if (account.getRefreshToken() == null || account.getRefreshToken().isBlank()) {
+            return false;
+        }
         LocalDateTime issuedAt = account.getTokenIssuedAt();
         if (issuedAt == null) {
             return true;

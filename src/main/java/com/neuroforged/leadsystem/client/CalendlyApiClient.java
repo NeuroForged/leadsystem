@@ -5,6 +5,7 @@ import com.neuroforged.leadsystem.dto.CalendlyScheduledEventsResponse;
 import com.neuroforged.leadsystem.dto.CalendlyEventInviteesResponse;
 
 import java.time.ZonedDateTime;
+import java.util.Map;
 
 public interface CalendlyApiClient {
 
@@ -17,4 +18,7 @@ public interface CalendlyApiClient {
     CalendlyScheduledEventsResponse fetchScheduledEvents(String accessToken, String organizationUri, ZonedDateTime minStartTime, String status);
 
     CalendlyEventInviteesResponse fetchEventInvitees(String accessToken, String eventUuid);
+
+    /** GET /users/me — the `resource` object (uri, name, scheduling_url, current_organization). */
+    Map<String, Object> fetchCurrentUser(String accessToken);
 }
