@@ -26,21 +26,24 @@ public interface CalendlyMeetingRepository extends JpaRepository<CalendlyMeeting
      * into SQL (rather than filtering a fetched page in memory) keeps pagination counts correct
      * and matches invitees across all pages. {@code LEFT JOIN FETCH m.client} eliminates the
      * per-row lazy-load of the client association.
+     * Every parameter except clientId is always bound (the service widens an absent date to a
+     * sentinel and an absent invitee to {@code "%"}): Postgres cannot type a null timestamp or
+     * string parameter in {@code :x IS NULL}, and the whole query fails.
      */
     @Query(value = """
             SELECT m FROM CalendlyMeeting m
             LEFT JOIN FETCH m.client
             WHERE (:clientId IS NULL OR m.client.id = :clientId)
-              AND (:from IS NULL OR m.startTime >= :from)
-              AND (:to IS NULL OR m.startTime < :to)
-              AND (:invitee IS NULL OR LOWER(m.inviteeEmail) LIKE LOWER(CONCAT('%', :invitee, '%')))
+              AND m.startTime >= :from
+              AND m.startTime < :to
+              AND (:invitee = '%' OR LOWER(m.inviteeEmail) LIKE :invitee)
             """,
             countQuery = """
             SELECT COUNT(m) FROM CalendlyMeeting m
             WHERE (:clientId IS NULL OR m.client.id = :clientId)
-              AND (:from IS NULL OR m.startTime >= :from)
-              AND (:to IS NULL OR m.startTime < :to)
-              AND (:invitee IS NULL OR LOWER(m.inviteeEmail) LIKE LOWER(CONCAT('%', :invitee, '%')))
+              AND m.startTime >= :from
+              AND m.startTime < :to
+              AND (:invitee = '%' OR LOWER(m.inviteeEmail) LIKE :invitee)
             """)
     Page<CalendlyMeeting> search(
             @Param("clientId") Long clientId,

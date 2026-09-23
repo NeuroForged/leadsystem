@@ -57,6 +57,14 @@ public class Lead {
 
     private Integer leadScore;
 
+    /** Chatbot session that produced the lead (null for form / manual leads). */
+    @Column(name = "chat_session_id", length = 64)
+    private String chatSessionId;
+
+    /** Plain-English explanation of leadScore. */
+    @Column(name = "score_basis", length = 500)
+    private String scoreBasis;
+
     @Column(length = 1000)
     private String leadChallenge;
 

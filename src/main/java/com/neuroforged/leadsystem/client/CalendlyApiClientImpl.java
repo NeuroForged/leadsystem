@@ -126,4 +126,15 @@ public class CalendlyApiClientImpl implements CalendlyApiClient {
                 url, HttpMethod.GET, new HttpEntity<>(headers), CalendlyEventInviteesResponse.class);
         return response.getBody();
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> fetchCurrentUser(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                API_BASE + "/users/me", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+        Object resource = response.getBody() == null ? null : response.getBody().get("resource");
+        return resource instanceof Map ? (Map<String, Object>) resource : Map.of();
+    }
 }

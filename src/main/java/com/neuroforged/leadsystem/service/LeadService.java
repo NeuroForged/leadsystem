@@ -12,6 +12,9 @@ public interface LeadService {
     LeadResponseDTO createLead(LeadRequestDTO dto);
     PagedResponse<LeadResponseDTO> getLeads(Long clientId, LeadStatus status, String search, String from, String to, Pageable pageable);
     LeadResponseDTO updateLeadStatus(Long id, LeadStatus status);
+
+    /** Permanently removes a lead and its comments (admin only; used for erasure requests and test cleanup). */
+    void deleteLead(Long id);
     List<LeadResponseDTO> getLeadsByClientId(Long clientId);
     LeadResponseDTO getLeadById(Long id);
 }

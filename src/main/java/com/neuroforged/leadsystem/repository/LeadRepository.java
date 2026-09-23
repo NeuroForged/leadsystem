@@ -26,6 +26,9 @@ public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificat
 
     List<Lead> findByClient_Id(Long clientId);
 
+    @Query("select l.client.id, max(l.createdAt) from Lead l where l.client.id in :clientIds group by l.client.id")
+    List<Object[]> findLastLeadAtByClientIds(@Param("clientIds") java.util.Collection<Long> clientIds);
+
     Page<Lead> findByClient_Id(Long clientId, Pageable pageable);
 
     Page<Lead> findByStatus(LeadStatus status, Pageable pageable);

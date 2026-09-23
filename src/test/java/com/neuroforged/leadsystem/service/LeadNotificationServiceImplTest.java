@@ -105,4 +105,25 @@ class LeadNotificationServiceImplTest {
         verify(emailService).sendLeadToMultiple(captor.capture(), any(), any());
         assertThat(captor.getValue()).containsExactly("admin@test.com");
     }
+
+    @Test
+    void notification_forPatientLead_hasNoNullsAndListsCapturedFields() {
+        when(clientRepository.findById(1L)).thenReturn(Optional.empty());
+        com.neuroforged.leadsystem.entity.Lead lead = leadForClient("1");
+        lead.setLeadScore(null);
+        lead.setMonthlyLeads(null);
+        lead.setCostPerLead(null);
+        lead.setClientValue(null);
+        lead.setConversionRate(null);
+        lead.setCapturedFields(new java.util.LinkedHashMap<>(java.util.Map.of("treatment_interest", "Invisalign")));
+
+        notificationService.notifyNewLead(lead);
+
+        ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendLeadToMultiple(any(), subject.capture(), body.capture());
+        assertThat(subject.getValue()).doesNotContain("null").contains("unscored");
+        assertThat(body.getValue()).doesNotContain("null").doesNotContain("Cost Per Lead")
+                .contains("treatment interest: Invisalign");
+    }
 }

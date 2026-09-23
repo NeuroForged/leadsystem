@@ -23,6 +23,8 @@ class ClientServiceImplTest {
 
     @Mock private ClientRepository clientRepository;
     @Mock private ClientMapper clientMapper;
+    @Mock private com.neuroforged.leadsystem.repository.CalendlyAccountRepository calendlyAccountRepository;
+    @Mock private com.neuroforged.leadsystem.repository.LeadRepository leadRepository;
 
     @InjectMocks
     private ClientServiceImpl clientService;
@@ -88,5 +90,22 @@ class ClientServiceImplTest {
         when(clientRepository.findByPrimaryEmail("none@example.com")).thenReturn(Optional.empty());
 
         assertThat(clientService.findClientByEmail("none@example.com")).isEmpty();
+    }
+
+    @Test
+    void getAllClients_attachesLastLeadAt_soThePortalCanShowActivity() {
+        Client a = new Client(); a.setId(1L);
+        Client b = new Client(); b.setId(2L);
+        java.time.LocalDateTime when = java.time.LocalDateTime.of(2026, 9, 20, 10, 0);
+        when(clientRepository.findAll()).thenReturn(java.util.List.of(a, b));
+        when(calendlyAccountRepository.findAllByClientIdIn(any())).thenReturn(java.util.List.of());
+        when(leadRepository.findLastLeadAtByClientIds(any())).thenReturn(java.util.List.<Object[]>of(new Object[]{1L, when}));
+        when(clientMapper.toDto(any(Client.class), anyBoolean())).thenAnswer(inv -> {
+            ClientDto d = new ClientDto(); d.setId(((Client) inv.getArgument(0)).getId()); return d;
+        });
+
+        java.util.List<ClientDto> out = clientService.getAllClients();
+
+        assertThat(out).extracting(ClientDto::getLastLeadAt).containsExactly(when, null);
     }
 }

@@ -24,6 +24,9 @@ public class ClientDto {
 
     private boolean calendlyConnected;
 
+    /** Most recent lead for this client, or null. The Portal shows a client as active when this is recent. */
+    private LocalDateTime lastLeadAt;
+
     private Integer scrapeFrequencyDays;
 
     private String logoUrl;

@@ -52,6 +52,7 @@ public class LeadServiceImpl implements LeadService {
     private final OutboundWebhookService outboundWebhookService;
     private final LeadSystemMetrics metrics;
     private final BusinessEventLogger eventLogger;
+    private final com.neuroforged.leadsystem.repository.LeadCommentRepository leadCommentRepository;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -154,6 +155,15 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteLead(Long id) {
+        if (!leadRepository.existsById(id)) throw new ResourceNotFoundException("Lead not found with ID: " + id);
+        leadCommentRepository.deleteByLeadId(id);
+        leadRepository.deleteById(id);
+        log.info("Lead {} deleted", id);
+    }
+
+    @Override
     public List<LeadResponseDTO> getLeadsByClientId(Long clientId) {
         if (clientId == null) {
             throw new InvalidLeadException("Client ID must not be null.");
@@ -203,6 +213,9 @@ public class LeadServiceImpl implements LeadService {
                 .costPerLead(dto.getCostPerLead())
                 .clientValue(dto.getClientValue())
                 .leadScore(dto.getLeadScore())
+                .firstName(dto.getFirstName())
+                .chatSessionId(dto.getChatSessionId())
+                .scoreBasis(dto.getScoreBasis())
                 .leadChallenge(dto.getLeadChallenge())
                 .capturedFields(dto.getCapturedFields())
                 .client(client)

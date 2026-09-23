@@ -71,8 +71,8 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
         log.debug("Polling Calendly events for clientId={} since {}", account.getClientId(), since);
 
         AtomicInteger count = new AtomicInteger(0);
-        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.SCHEDULED, count);
-        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.CANCELLED, count);
+        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.SCHEDULED, count, account.getClientId());
+        syncEvents(fresh.getAccessToken(), fresh.getOrganization(), since, MeetingStatus.CANCELLED, count, account.getClientId());
 
         account.setLastPolledAt(LocalDateTime.now(ZoneId.of("UTC")));
         accountRepository.save(account);
@@ -80,7 +80,7 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
     }
 
     private void syncEvents(String accessToken, String organization, ZonedDateTime since,
-                            MeetingStatus targetStatus, AtomicInteger syncedCount) {
+                            MeetingStatus targetStatus, AtomicInteger syncedCount, Long clientId) {
         String apiStatus = (targetStatus == MeetingStatus.SCHEDULED) ? "active" : "canceled";
 
         CalendlyScheduledEventsResponse response;
@@ -97,7 +97,7 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
 
         for (CalendlyScheduledEventsResponse.Event event : response.getCollection()) {
             try {
-                processEvent(accessToken, event, targetStatus);
+                processEvent(accessToken, event, targetStatus, clientId);
                 syncedCount.incrementAndGet();
             } catch (Exception ex) {
                 log.warn("Failed to process polled event uri={}: {}", event.getUri(), ex.getMessage());
@@ -105,7 +105,7 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
         }
     }
 
-    private void processEvent(String accessToken, CalendlyScheduledEventsResponse.Event event, MeetingStatus targetStatus) {
+    private void processEvent(String accessToken, CalendlyScheduledEventsResponse.Event event, MeetingStatus targetStatus, Long clientId) {
         String eventUuid = extractUuid(event.getUri());
 
         if (targetStatus == MeetingStatus.CANCELLED) {
@@ -142,7 +142,10 @@ public class CalendlyPollingServiceImpl implements CalendlyPollingService {
                                 .startTime(start)
                                 .endTime(end)
                                 .status(MeetingStatus.SCHEDULED)
-                                .client(clientRepository.findByPrimaryEmail(invitee.getEmail()).orElse(null))
+                                // the meeting belongs to the client whose Calendly this is; the invitee is
+                                // their customer (the old lookup by invitee email always found no client)
+                                .client(clientId != null ? clientRepository.findById(clientId).orElse(null)
+                                        : clientRepository.findByPrimaryEmail(invitee.getEmail()).orElse(null))
                                 .build();
                         meetingRepository.save(meeting);
                         log.info("Polling created meeting for invitee={} uri={}", invitee.getEmail(), event.getUri());

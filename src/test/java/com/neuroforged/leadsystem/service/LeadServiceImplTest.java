@@ -74,6 +74,9 @@ class LeadServiceImplTest {
     @Mock
     private BusinessEventLogger eventLogger;
 
+    @Mock
+    private com.neuroforged.leadsystem.repository.LeadCommentRepository leadCommentRepository;
+
     @InjectMocks
     private LeadServiceImpl leadService;
 
@@ -206,5 +209,61 @@ class LeadServiceImplTest {
         assertThatThrownBy(() -> leadService.updateLeadStatus(99L, LeadStatus.CONTACTED))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
+    }
+
+    @Test
+    void createLead_patientLead_withoutB2bMetrics_keepsNameSessionAndScoreBasis() {
+        // A dental patient has no monthly leads, cost per lead or client value. Those must be
+        // absent (null), not filled with invented defaults, and the chat session must be kept
+        // so the Portal can show the conversation on the lead.
+        LeadRequestDTO dto = new LeadRequestDTO();
+        dto.setEmail("sam.carter@example.com");
+        dto.setClientId("1");
+        dto.setBusinessName("Sam Carter");
+        dto.setBusinessType("Individual");
+        dto.setCustomerType("B2C");
+        dto.setTrafficSource("chatbot");
+        dto.setLeadChallenge("Invisalign, next week");
+        dto.setLeadScore(85);
+        dto.setFirstName("Sam Carter");
+        dto.setChatSessionId("7b1c0d2e-0000-4000-8000-000000000001");
+        dto.setScoreBasis("All 4 required details; phone given; wants next week");
+        Client client = new Client(); client.setId(1L);
+
+        when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+        when(leadRepository.existsByEmailAndClient_Id(dto.getEmail(), 1L)).thenReturn(false);
+        when(leadRepository.save(any(Lead.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(leadMapper.toDto(any(Lead.class))).thenReturn(new LeadResponseDTO());
+
+        leadService.createLead(dto);
+
+        org.mockito.ArgumentCaptor<Lead> saved = org.mockito.ArgumentCaptor.forClass(Lead.class);
+        verify(leadRepository).save(saved.capture());
+        Lead lead = saved.getValue();
+        assertThat(lead.getFirstName()).isEqualTo("Sam Carter");
+        assertThat(lead.getChatSessionId()).isEqualTo("7b1c0d2e-0000-4000-8000-000000000001");
+        assertThat(lead.getScoreBasis()).contains("wants next week");
+        assertThat(lead.getLeadScore()).isEqualTo(85);
+        assertThat(lead.getMonthlyLeads()).isNull();
+        assertThat(lead.getCostPerLead()).isNull();
+        assertThat(lead.getClientValue()).isNull();
+        assertThat(lead.getConversionRate()).isNull();
+    }
+
+    @Test
+    void deleteLead_removesCommentsThenLead() {
+        when(leadRepository.existsById(7L)).thenReturn(true);
+        leadService.deleteLead(7L);
+        org.mockito.InOrder order = inOrder(leadCommentRepository, leadRepository);
+        order.verify(leadCommentRepository).deleteByLeadId(7L);
+        order.verify(leadRepository).deleteById(7L);
+    }
+
+    @Test
+    void deleteLead_unknownId_isNotFound() {
+        when(leadRepository.existsById(8L)).thenReturn(false);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> leadService.deleteLead(8L))
+                .isInstanceOf(com.neuroforged.leadsystem.exception.ResourceNotFoundException.class);
+        verify(leadRepository, never()).deleteById(any());
     }
 }
