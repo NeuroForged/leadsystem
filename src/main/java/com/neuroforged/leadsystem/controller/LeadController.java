@@ -91,6 +91,13 @@ public class LeadController {
         return dir.equalsIgnoreCase("asc") ? Sort.by(field).ascending() : Sort.by(field).descending();
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteLead(@PathVariable Long id) {
+        leadService.deleteLead(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<LeadResponseDTO> updateLeadStatus(

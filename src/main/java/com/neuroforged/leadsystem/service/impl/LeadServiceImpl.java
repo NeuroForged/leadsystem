@@ -52,6 +52,7 @@ public class LeadServiceImpl implements LeadService {
     private final OutboundWebhookService outboundWebhookService;
     private final LeadSystemMetrics metrics;
     private final BusinessEventLogger eventLogger;
+    private final com.neuroforged.leadsystem.repository.LeadCommentRepository leadCommentRepository;
 
     @Override
     public LeadResponseDTO createLead(LeadRequestDTO dto) {
@@ -151,6 +152,15 @@ public class LeadServiceImpl implements LeadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lead not found with ID: " + id));
         lead.setStatus(status);
         return leadMapper.toDto(leadRepository.save(lead));
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteLead(Long id) {
+        if (!leadRepository.existsById(id)) throw new ResourceNotFoundException("Lead not found with ID: " + id);
+        leadCommentRepository.deleteByLeadId(id);
+        leadRepository.deleteById(id);
+        log.info("Lead {} deleted", id);
     }
 
     @Override

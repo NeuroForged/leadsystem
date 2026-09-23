@@ -74,6 +74,9 @@ class LeadServiceImplTest {
     @Mock
     private BusinessEventLogger eventLogger;
 
+    @Mock
+    private com.neuroforged.leadsystem.repository.LeadCommentRepository leadCommentRepository;
+
     @InjectMocks
     private LeadServiceImpl leadService;
 
@@ -245,5 +248,22 @@ class LeadServiceImplTest {
         assertThat(lead.getCostPerLead()).isNull();
         assertThat(lead.getClientValue()).isNull();
         assertThat(lead.getConversionRate()).isNull();
+    }
+
+    @Test
+    void deleteLead_removesCommentsThenLead() {
+        when(leadRepository.existsById(7L)).thenReturn(true);
+        leadService.deleteLead(7L);
+        org.mockito.InOrder order = inOrder(leadCommentRepository, leadRepository);
+        order.verify(leadCommentRepository).deleteByLeadId(7L);
+        order.verify(leadRepository).deleteById(7L);
+    }
+
+    @Test
+    void deleteLead_unknownId_isNotFound() {
+        when(leadRepository.existsById(8L)).thenReturn(false);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> leadService.deleteLead(8L))
+                .isInstanceOf(com.neuroforged.leadsystem.exception.ResourceNotFoundException.class);
+        verify(leadRepository, never()).deleteById(any());
     }
 }
