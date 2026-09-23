@@ -18,6 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = "spring.flyway.enabled=false")
 class CalendlyMeetingRepositoryTest {
 
+    private static final ZonedDateTime ALL_FROM = ZonedDateTime.now().minusYears(1);
+    private static final ZonedDateTime ALL_TO = ZonedDateTime.now().plusYears(1);
+
     @Autowired
     private CalendlyMeetingRepository meetingRepository;
 
@@ -35,8 +38,8 @@ class CalendlyMeetingRepositoryTest {
 
     @Test
     void search_withNoFilters_returnsEveryMeeting() {
-        // The Meetings page calls this with every filter empty. With a null invitee the query
-        // failed on Postgres (lower(bytea)), so the page showed "No meetings yet" forever.
+        // The Meetings page calls this with every filter empty. With null filters the query
+        // failed on Postgres (untyped null parameters), so the page showed "No meetings yet" forever.
         Client client = new Client();
         client.setName("meetings-client");
         client.setApiKey("key-meetings-" + System.nanoTime());
@@ -44,9 +47,9 @@ class CalendlyMeetingRepositoryTest {
         meeting(client, "Ann@Example.com");
         meeting(client, "bob@example.com");
 
-        assertThat(meetingRepository.search(null, null, null, "%", PageRequest.of(0, 20)).getTotalElements())
+        assertThat(meetingRepository.search(null, ALL_FROM, ALL_TO, "%", PageRequest.of(0, 20)).getTotalElements())
                 .isEqualTo(2);
-        assertThat(meetingRepository.search(client.getId(), null, null, "%ann@%", PageRequest.of(0, 20)).getContent())
+        assertThat(meetingRepository.search(client.getId(), ALL_FROM, ALL_TO, "%ann@%", PageRequest.of(0, 20)).getContent())
                 .extracting(CalendlyMeeting::getInviteeEmail).containsExactly("Ann@Example.com");
     }
 }

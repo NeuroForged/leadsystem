@@ -28,6 +28,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MeetingServiceImpl implements MeetingService {
 
+    // Open ends of the date filter; see CalendlyMeetingRepository.search for why never null.
+    private static final ZonedDateTime ANY_START = ZonedDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
+    private static final ZonedDateTime ANY_END = ZonedDateTime.of(9999, 1, 1, 0, 0, 0, 0, ZoneId.of("UTC"));
+
     private final CalendlyMeetingRepository meetingRepository;
     private final LeadRepository leadRepository;
 
@@ -36,8 +40,8 @@ public class MeetingServiceImpl implements MeetingService {
         // Cap like LeadController does; size came straight from the query string.
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200));
 
-        ZonedDateTime fromDt = from != null ? java.time.LocalDate.parse(from).atStartOfDay(ZoneId.of("UTC")) : null;
-        ZonedDateTime toDt = to != null ? java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.of("UTC")) : null;
+        ZonedDateTime fromDt = from != null ? java.time.LocalDate.parse(from).atStartOfDay(ZoneId.of("UTC")) : ANY_START;
+        ZonedDateTime toDt = to != null ? java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.of("UTC")) : ANY_END;
         String invitee = (inviteeEmail != null && !inviteeEmail.isBlank())
                 ? "%" + inviteeEmail.trim().toLowerCase(java.util.Locale.ROOT) + "%" : "%";
 
